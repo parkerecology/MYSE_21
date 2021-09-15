@@ -5,11 +5,14 @@
 library(readr)
 
 #long data 
-dl <- read_csv("~/Documents/Contract work/UNCG/2021/MYSE Project/Seq_visits_long.csv")
+dl <- read_csv("data/Seq_visits_long.csv")
+
+
 
 #bat data
-buv <- read_csv("~/Documents/Contract work/UNCG/2021/MYSE Project/all_bats_unvetted.csv", 
-                col_types = cols(date = col_date(format = "%Y%m%d")))
+buv <- read_csv("data/all_bats_unvetted.csv", 
+                +     col_types = cols(date = col_date(format = "%Y%m%d")))
+
 
 #other obs covs
 s21 <- read_csv("data/sites_2015_2021.csv")
@@ -47,6 +50,11 @@ dft<-
   data.table::dcast(setDT(dfl),site_code~visit,value.var=c(
   "PERSUB","tmax", "tmin", "tavg","J_date","prcp","year","structure","canopy","water"
 ))
+
+
+#add site covariates 
+
+
 
 #make unmarked dataframe
 library(unmarked)
