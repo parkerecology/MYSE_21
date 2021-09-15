@@ -11,7 +11,7 @@ dl <- read_csv("data/Seq_visits_long.csv")
 
 #bat data
 buv <- read_csv("data/all_bats_unvetted.csv", 
-                +     col_types = cols(date = col_date(format = "%Y%m%d")))
+                col_types = cols(date = col_date(format = "%Y%m%d")))
 
 
 #other obs covs
