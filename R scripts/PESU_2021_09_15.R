@@ -1,4 +1,4 @@
-####occupancy models NABAt 2015-2021
+####occupancy models NABat 2015-2021
 
 
 #load weather data
@@ -44,9 +44,35 @@ library(data.table)
 
 #get rid of night vars 
 names(dfl)
-dfl<-dfl[,-c(2,5,7)]
+dfl<-dfl[,-c(5,7)]
 
 length(unique(dfl$site_code))#how many sites? 189
+
+#add in replacements for RNOAA NAs
+fin <- read_csv("data/na_sites_fin.csv", col_types = cols(date = col_date(format = "%m/%d/%y")))
+
+library(weathermetrics)
+
+fin$tmax<-fahrenheit.to.celsius(fin$tmax)
+fin$tmin<-fahrenheit.to.celsius(fin$tmin)
+
+merge(fin[,c(1,7,10,11)],dfl,by=c("site_code","date"))
+
+
+c <- left_join(dfl,fin[,c(1,7,10)],by=c("site_code","date")) %>% # this will generate age.x and age.y
+  mutate(tmax = ifelse(is.na(tmax.x), tmax.y, tmax.x)) %>% # we generate a joint 'age' variable
+  select(-tmax.y, -tmax.x) # drop the superfluous columns
+
+d <- left_join(c,fin[,c(1,7,11)],by=c("site_code","date")) %>% # this will generate age.x and age.y
+  mutate(tmin = ifelse(is.na(tmin.x), tmin.y, tmin.x)) %>% # we generate a joint 'age' variable
+  select(-tmin.y, -tmin.x) # drop the superfluous columns
+
+dfl<-d[,c(1:6,15,16,8:14)]
+
+dfl$tavg<-(dfl$tmax+dfl$tmin)/2
+
+dfl<-dfl[,c(1,3:8,16,9:15)]
+  
 
 
 #change to wide
@@ -69,6 +95,8 @@ sc<-s21[,-c(1,2,6:7)]
 
 #add yearly site covariates 
 #cg_tmax <- read_csv("data/year_tmax_NClimGrid.csv")
+
+
 
 
 #make unmarked dataframe
@@ -223,9 +251,9 @@ modSel(cb.models)
 
 
 p.models<-fitList("psi(.)gam(.)eps(.)p(.)"=m.null,
-                  #"psi(.)gam(.)eps(.)p(temp_low)"=m.tmin,
-                  #"psi(.)gam(.)eps(.)p(temp_low^2)"=m.tavg,
-                  #"psi(.)gam(.)eps(.)p(precip)"=m.tmax
+                  "psi(.)gam(.)eps(.)p(temp_low)"=m.tmin,
+                  "psi(.)gam(.)eps(.)p(temp_low^2)"=m.tavg,
+                  "psi(.)gam(.)eps(.)p(tmax)"=m.tmax,
                   "psi(.)gam(.)eps(.)p(structure)"=m.structure,
                   "psi(.)gam(.)eps(.)p(canopy)"=m.canopy,
                   "psi(.)gam(.)eps(.)p(water)"=m.water,
@@ -241,7 +269,7 @@ modSel(p.models)
 
 
 #quick bayes occu estimate 
-(re <- ranef(m.water))
+(re <- ranef(m.water.structure))
 
 # Best Unbiased Predictors
 occ_y<-data.frame(bup(re, stat="mean"))
