@@ -78,7 +78,8 @@ dfl<-dfl[,c(1,3:8,16,9:15)]
 #change to wide
 dft<-
   data.table::dcast(setDT(dfl),site_code~visit,value.var=c(
-  "PERSUB","tmax", "tmin", "tavg","J_date","prcp","year","structure","canopy","water","elev","impervious","tree_canopy"
+  "PERSUB","tmax", "tmin", "tavg","J_date","prcp",
+  "year","structure","canopy","water","elev","impervious","tree_canopy"
 ))
 
 
@@ -95,7 +96,6 @@ sc<-s21[,-c(1,6:7)]
 
 #add yearly site covariates 
 #cg_tmax <- read_csv("data/year_tmax_NClimGrid.csv")
-
 
 
 #make unmarked dataframe
@@ -260,6 +260,26 @@ p.models<-fitList("psi(.)gam(.)eps(.)p(.)"=m.null,
 modSel(p.models)
 
 
+#Impervious hypothosis 
+
+#PESU will have a negative association with increases in impervious substrate 
+
+#A compare against p null model to see if it explains additional varitation
+
+m.psi.impervious<-colext(psiformula = ~sc.impervious, gammaformula = ~1, epsilonformula = ~1, pformula = ~water*structure, data=umf)
+summary(m.psi.impervious) 
+
+m.psi.structure<-colext(psiformula = ~sc.structure, gammaformula = ~1, epsilonformula = ~1, pformula = ~water*structure, data=umf)
+summary(m.psi.structure) 
+
+i.models<-fitList("psi(.)gam(.)eps(.)p(.)"=m.null,
+                  "psi(.)gam(.)eps(.)p(water +/x structure)"=m.water.structure,
+                  "psi(.)gam(.)eps(.)p(impervious)"=m.psi.impervious,
+                  "psi(.)gam(.)eps(.)p(structure)"=m.psi.structure)
+
+modSel(i.models)
+
+#impervious doesn't add anything for PESU 
 
 #quick bayes occu estimate 
 (re <- ranef(m.water.structure))
@@ -326,26 +346,20 @@ options(mc.cores=3)
 #null
 (ms.null<-stan_colext(psiformula = ~1, gammaformula = ~1, epsilonformula = ~1, pformula = ~1, data=umf, chains=3, iter=300))
      
-
 #tmin 
 (ms.tmin<-stan_colext(psiformula = ~1, gammaformula = ~1, epsilonformula = ~1, pformula = ~tmin, data=umf, chains=3, iter=300))
-
 
 #tavg 
 (ms.tavg<-stan_colext(psiformula = ~1, gammaformula = ~1, epsilonformula = ~1, pformula = ~tavg, data=umf, chains=3, iter=300))
 
-
 #tmax 
 (ms.tmax<-stan_colext(psiformula = ~1, gammaformula = ~1, epsilonformula = ~1, pformula = ~tmax, data=umf, chains=3, iter=300))
-
 
 #tmax2 
 (ms.tmax2<-stan_colext(psiformula = ~1, gammaformula = ~1, epsilonformula = ~1, pformula = ~tmax+I(tmax^2), data=umf, chains=3, iter=300))
 
-
 #structure AIC 2333
 (ms.structure<-stan_colext(psiformula = ~1, gammaformula = ~1, epsilonformula = ~1, pformula = ~structure, data=umf, chains=3, iter=300))
-
 
 #canopy models
 (ms.canopy<-stan_colext(psiformula = ~1, gammaformula = ~1, epsilonformula = ~1, pformula = ~canopy, data=umf, chains=3, iter=300))
@@ -367,7 +381,8 @@ options(mc.cores=3)
 
 (ms.water<-stan_colext(psiformula = ~1, gammaformula = ~1, epsilonformula = ~1, pformula = ~water, data=umf, chains=3, iter=300))
 
-(ms.water.structure<-stan_colext(psiformula = ~1, gammaformula = ~1, epsilonformula = ~1, pformula = ~water*structure, data=umf, chains=3, iter=300))
+(ms.water.structure<-stan_colext(psiformula = ~1, gammaformula = ~1, epsilonformula = ~1, pformula = ~water*structure, data=umf, chains=3, iter=1000))
+
 
 
 ## Water hypotheses: 
@@ -441,11 +456,15 @@ p.models<-fitList("psi(.)gam(.)eps(.)p(.)"=ms.null,
 modSel(p.models)
 
 
+fit_top<-ms.water.structure
+(fit_top_gof <- gof(fit_top, quiet=TRUE))
+plot(fit_top_gof)
+
+
+
+
 #what about a random effect
 (ms.water.structure<-stan_colext(psiformula = ~scale(sc.elev)+(1|sc.site_code), gammaformula = ~1, epsilonformula = ~1, pformula = ~water*structure, data=umf, chains=3, iter=300))
-
-
-
 
 
 #quick bayes occu estimate 
@@ -486,21 +505,11 @@ ggplot(sp,aes(year,PSI))+
 
 # Predictions -------------------------------------------------------------
 
-pesu_p<-data.frame(expand.grid(
-  structure=c("field","edge","corridor","interior"),
-  water=unique(umf@obsCovs$water)))
+plot_marginal(ms.water.structure,"det")
 
-dp<-predict(ms.water.structure, type="det" , newdata=pesu_p, appendData=TRUE)
+plot_marginal(ms.tmin,"det")
 
-pd <- position_dodge(0.2) # move them .05 to the left and right
 
-#quick plot
-ggplot(dp,aes(structure,Predicted,fill=water))+
-  geom_point(aes(shape = water),position = pd)+
-  geom_errorbar(aes(ymin=lower, ymax=upper),width=0.1,position=pd)+
-  ylab("P")+
-  ylim(0,1)+
-  theme_pubr()+
-  theme(axis.title.y = element_text(face = "italic"))
+
 
 
