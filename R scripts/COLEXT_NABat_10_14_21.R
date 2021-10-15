@@ -201,6 +201,10 @@ summary(m.pesu.structure.tmax)
 m.pesu.structure.jdate<-colext(psiformula = ~1, gammaformula = ~1, epsilonformula = ~1, pformula = ~structure + j_date, data=pesu_umf)
 summary(m.pesu.structure.jdate)
 
+#canopy + jdate
+m.pesu.canopy.jdate<-colext(psiformula = ~1, gammaformula = ~1, epsilonformula = ~1, pformula = ~canopy + j_date, data=pesu_umf)
+summary(m.pesu.canopy.jdate)
+
 
 #### Interactive detection covariates
 
@@ -245,94 +249,545 @@ p.pesu.models<-list("psi(.)gam(.)eps(.)p(.)"=m.pesu.null,
                        "psi(.)gam(.)eps(.)p(water +/x tree_canopy )"=m.pesu.water_tree_canopy
 )
 
-aictab(cand.set=p.pesu.models, c.hat=2.23)
+aictab(cand.set=p.pesu.models,second.ord = FALSE, c.hat=2.23)
 
 
-## Water hypotheses: 
-#Presence of a water feature will increase detection probability, predictions are:
-#a: reduced clutter, test against structure only model (water wins)
+pesu.p.top_m<-m.pesu.water.tavg
+
+
+pesu_p<-data.frame(expand.grid(
+  tavg=seq(min(na.omit(pesu_umf@obsCovs$tavg)),max(na.omit(pesu_umf@obsCovs$tavg))),
+  water=unique(pesu_umf@obsCovs$water)))
+
+dp<-predict(pesu.p.top_m, type="det" , newdata=pesu_p, appendData=TRUE)
+
+pd <- position_dodge(0.2) # move them .05 to the left and right
+
+#quick plot
+ggplot(dp,aes(tavg,Predicted,fill=water))+
+  geom_point(aes(shape = water),position = pd)+
+  geom_errorbar(aes(ymin=lower, ymax=upper),width=0.1,position=pd)+
+  ylab("P")+
+  xlab("Average nightly temperature C")+
+  ylim(0,1)+
+  theme_pubr()+
+  theme(axis.title.y = element_text(face = "italic"))
+
+
+
+
+
+# EPFU detection models ---------------------------------------------------
+
+
+#cut out epfu observations
+names(obs)
+epfu<-obs[,c(1,58:85,450:813)]
+names(epfu)
+
+
+#make unmarked dataframe
+library(unmarked)
+
+epfu_umf <- unmarkedMultFrame(y=as.data.frame(epfu[,c(2:29)]),
+                              siteCovs = data.frame(sc=sc),
+                              obsCovs=list(
+                                tmax=as.data.frame(epfu[,c(30:57)]),
+                                tmin=as.data.frame(epfu[,c(58:85)]),
+                                tavg=as.data.frame(epfu[,c(86:113)]),
+                                j_date=as.data.frame(epfu[,c(114:141)]),
+                                prcp=as.data.frame(epfu[,c(142:169)]),
+                                structure=as.data.frame(epfu[,c(198:225)]),
+                                canopy=as.data.frame(epfu[,c(226:253)]),
+                                water=as.data.frame(epfu[,c(254:281)]),
+                                elev=as.data.frame(epfu[,c(282:309)]),
+                                impervious=as.data.frame(epfu[,c(310:337)]),
+                                tree_canopy=as.data.frame(epfu[,c(338:365)]),
+                                dis_2_clutter=as.data.frame(epfu[,c(366:393)])
+                              ),
+                              #yearlySiteCovs=list(
+                              # year=as.data.frame(epfu[,c(170:197)])),
+                              numPrimary=7)
+plot(epfu_umf)
+summary(epfu_umf)
+
+
+#set levels for refernce conditions 
+levels(epfu_umf@obsCovs$structure)<-c("field","edge","corridor","interior")
+levels(epfu_umf@siteCovs$sc.structure)<-c("field","edge","corridor","interior")
+unique(epfu_umf@obsCovs$structure)
+unique(epfu_umf@siteCovs$sc.structure)
+
+levels(epfu_umf@obsCovs$canopy)<-c("closed","half","open")
+levels(epfu_umf@siteCovs$sc.canopy)<-c("closed","half","open")
+unique(epfu_umf@obsCovs$canopy)
+unique(epfu_umf@siteCovs$sc.canopy)
+
+#global model for c-hat
 library(AICcmodavg)
 
-a.models<-fitList("psi(.)gam(.)eps(.)p(.)"=m.pesu.null,
-                  "psi(.)gam(.)eps(.)p(structure)"=m.pesu.structure,
-                  "psi(.)gam(.)eps(.)p(water)"=m.pesu.water
+m.epfu.global<-colext(psiformula = ~1, gammaformula = ~1, epsilonformula = ~1, pformula = ~tavg+j_date+structure+tree_canopy+water+elev+dis_2_clutter, data=epfu_umf)
+summary(m.epfu.global)
+
+#goodness of fit test (takes a long time to run ~4hrs)
+#system.time(epfu.gof<-mb.gof.test(m.epfu.global,nsim = 1000))
+#epfu.gof#c-hat 
+
+### Single covarites
+
+#null 
+m.epfu.null<-colext(psiformula = ~1, gammaformula = ~1, epsilonformula = ~1, pformula = ~1, data=epfu_umf)
+summary(m.epfu.null)      
+
+#J-date 
+m.epfu.jdate<-colext(psiformula = ~1, gammaformula = ~1, epsilonformula = ~1, pformula = ~j_date, data=epfu_umf)
+summary(m.epfu.jdate)  
+
+#J-date2 (wont run)  
+m.epfu.jdate2<-colext(psiformula = ~1, gammaformula = ~1, epsilonformula = ~1, pformula = ~j_date+I(j_date^2), data=epfu_umf)
+summary(m.epfu.jdate2)
+
+#tmin 
+m.epfu.tmin<-colext(psiformula = ~1, gammaformula = ~1, epsilonformula = ~1, pformula = ~tmin, data=epfu_umf)
+summary(m.epfu.tmin)      
+
+#tmin2 
+m.epfu.tmin2<-colext(psiformula = ~1, gammaformula = ~1, epsilonformula = ~1, pformula = ~tmin+I(tmin^2), data=epfu_umf)
+summary(m.epfu.tmin2) 
+
+#tavg 
+m.epfu.tavg<-colext(psiformula = ~1, gammaformula = ~1, epsilonformula = ~1, pformula = ~tavg, data=epfu_umf)
+summary(m.epfu.tavg) 
+
+#tavg 2
+m.epfu.tavg2<-colext(psiformula = ~1, gammaformula = ~1, epsilonformula = ~1, pformula = ~tavg+I(tavg^2), data=epfu_umf)
+summary(m.epfu.tavg2)
+
+#tmax 
+m.epfu.tmax<-colext(psiformula = ~1, gammaformula = ~1, epsilonformula = ~1, pformula = ~tmax, data=epfu_umf)
+summary(m.epfu.tmax) 
+
+#tmax2 
+m.epfu.tmax2<-colext(psiformula = ~1, gammaformula = ~1, epsilonformula = ~1, pformula = ~tmax+I(tmax^2), data=epfu_umf)
+summary(m.epfu.tmax2) 
+
+#structure 
+m.epfu.structure<-colext(psiformula = ~1, gammaformula = ~1, epsilonformula = ~1, pformula = ~structure, data=epfu_umf)
+summary(m.epfu.structure) 
+
+#distance to clutter
+m.epfu.dis_2_clutter<-colext(psiformula = ~1, gammaformula = ~1, epsilonformula = ~1, pformula = ~dis_2_clutter, data=epfu_umf)
+summary(m.epfu.dis_2_clutter) 
+
+#canopy catagory
+m.epfu.canopy<-colext(psiformula = ~1, gammaformula = ~1, epsilonformula = ~1, pformula = ~canopy, data=epfu_umf)
+summary(m.epfu.canopy) 
+
+#canopy continous
+m.epfu.tree_canopy<-colext(psiformula = ~1, gammaformula = ~1, epsilonformula = ~1, pformula = ~tree_canopy, data=epfu_umf)
+summary(m.epfu.tree_canopy) 
+
+#canopy continous2 
+m.epfu.tree_canopy2<-colext(psiformula = ~1, gammaformula = ~1, epsilonformula = ~1, pformula = ~tree_canopy+I(tree_canopy^2), data=epfu_umf)
+summary(m.epfu.tree_canopy2) 
+
+#Water 
+m.epfu.water<-colext(psiformula = ~1, gammaformula = ~1, epsilonformula = ~1, pformula = ~water, data=epfu_umf)
+summary(m.epfu.water) 
+
+p.epfu.s.models<-fitList("psi(.)gam(.)eps(.)p(.)"=m.epfu.null,
+                         "psi(.)gam(.)eps(.)p(jdate)"=m.epfu.jdate,
+                         "psi(.)gam(.)eps(.)p(tree canopy)"=m.epfu.tree_canopy,
+                         "psi(.)gam(.)eps(.)p(temp_low)"=m.epfu.tmin,
+                         "psi(.)gam(.)eps(.)p(temp_avg)"=m.epfu.tavg,
+                         "psi(.)gam(.)eps(.)p(tmax)"=m.epfu.tmax,
+                         "psi(.)gam(.)eps(.)p(temp_low^2)"=m.epfu.tmin2,
+                         "psi(.)gam(.)eps(.)p(temp_avg^2)"=m.epfu.tavg2,
+                         "psi(.)gam(.)eps(.)p(tmax^2)"=m.epfu.tmax2,
+                         "psi(.)gam(.)eps(.)p(structure)"=m.epfu.structure,
+                         "psi(.)gam(.)eps(.)p(distance to clutter)"=m.epfu.dis_2_clutter,
+                         "psi(.)gam(.)eps(.)p(canopy)"=m.epfu.canopy,
+                         "psi(.)gam(.)eps(.)p(water)"=m.epfu.water
 )
-modSel(a.models)
 
-#b: some physical characteristics such as sound traveling more efficiently in higher humidity (not really testable without RH data)
-#c: its occupancy probability not detection, test model with against occupancy model (not supported)
+modSel(p.epfu.s.models)
 
-c.models<-fitList("psi(.)gam(.)eps(.)p(.)"=m.pesu.null,
-                  "psi(.)gam(.)eps(.)p(water)"=m.pesu.water,
-                  "psi(water)gam(.)eps(.)p(.)"=m.pesu.psi.water,
-                  "psi(water)gam(.)eps(.)p(water)"=m.pesu.water.water
+
+#### Additive detection covariates
+
+#water + jdate
+m.epfu.water.jdate<-colext(psiformula = ~1, gammaformula = ~1, epsilonformula = ~1, pformula = ~water + j_date, data=epfu_umf)
+summary(m.epfu.water.jdate) 
+
+#water + structure
+m.epfu.water.structure<-colext(psiformula = ~1, gammaformula = ~1, epsilonformula = ~1, pformula = ~water + structure, data=epfu_umf)
+summary(m.epfu.water.structure) 
+
+#water + tmin
+m.epfu.water.tmin<-colext(psiformula = ~1, gammaformula = ~1, epsilonformula = ~1, pformula = ~water + tmin, data=epfu_umf)
+summary(m.epfu.water.tmin) 
+
+#water + tavg
+m.epfu.water.tavg<-colext(psiformula = ~1, gammaformula = ~1, epsilonformula = ~1, pformula = ~water + tavg, data=epfu_umf)
+summary(m.epfu.water.tavg)
+
+#water + tmax
+m.epfu.water.tmax<-colext(psiformula = ~1, gammaformula = ~1, epsilonformula = ~1, pformula = ~water + tmax, data=epfu_umf)
+summary(m.epfu.water.tmax)
+
+#water + canopy
+m.epfu.water.canopy<-colext(psiformula = ~1, gammaformula = ~1, epsilonformula = ~1, pformula = ~water + canopy, data=epfu_umf)
+summary(m.epfu.water.canopy)
+
+#water + tree canopy 
+m.epfu.water.tree_canopy<-colext(psiformula = ~1, gammaformula = ~1, epsilonformula = ~1, pformula = ~water + tree_canopy, data=epfu_umf)
+summary(m.epfu.water.tree_canopy)
+
+#water + distance to clutter
+m.epfu.water.dis_2_clutter<-colext(psiformula = ~1, gammaformula = ~1, epsilonformula = ~1, pformula = ~water + dis_2_clutter, data=epfu_umf)
+summary(m.epfu.water.dis_2_clutter)
+
+#structure + tmax
+m.epfu.structure.tmax<-colext(psiformula = ~1, gammaformula = ~1, epsilonformula = ~1, pformula = ~structure + tmax, data=epfu_umf)
+summary(m.epfu.structure.tmax)
+
+#structure + jdate
+m.epfu.structure.jdate<-colext(psiformula = ~1, gammaformula = ~1, epsilonformula = ~1, pformula = ~structure + j_date, data=epfu_umf)
+summary(m.epfu.structure.jdate)
+
+
+#canopy + jdate
+m.epfu.canopy.jdate<-colext(psiformula = ~1, gammaformula = ~1, epsilonformula = ~1, pformula = ~canopy + j_date, data=epfu_umf)
+summary(m.epfu.canopy.jdate)
+
+
+#### Interactive detection covariates
+
+#water +/x structure
+m.epfu.water_structure<-colext(psiformula = ~1, gammaformula = ~1, epsilonformula = ~1, pformula = ~water*structure, data=epfu_umf)
+summary(m.epfu.water_structure) 
+
+#water +/x tree_canopy
+m.epfu.water_tree_canopy<-colext(psiformula = ~1, gammaformula = ~1, epsilonformula = ~1, pformula = ~water*tree_canopy, data=epfu_umf)
+summary(m.epfu.water_tree_canopy) 
+
+#water +/x structure + tmax
+m.epfu.water_structure.tmax<-colext(psiformula = ~1, gammaformula = ~1, epsilonformula = ~1, pformula = ~water*structure+tmax, data=epfu_umf)
+summary(m.epfu.water_structure.tmax) 
+
+
+p.epfu.models<-list("psi(.)gam(.)eps(.)p(.)"=m.epfu.null,
+                    "psi(.)gam(.)eps(.)p(jdate)"=m.epfu.jdate,
+                    "psi(.)gam(.)eps(.)p(tree canopy)"=m.epfu.tree_canopy,
+                    "psi(.)gam(.)eps(.)p(temp_low)"=m.epfu.tmin,
+                    "psi(.)gam(.)eps(.)p(temp_avg)"=m.epfu.tavg,
+                    "psi(.)gam(.)eps(.)p(tmax)"=m.epfu.tmax,
+                    "psi(.)gam(.)eps(.)p(temp_low^2)"=m.epfu.tmin2,
+                    "psi(.)gam(.)eps(.)p(temp_avg^2)"=m.epfu.tavg2,
+                    "psi(.)gam(.)eps(.)p(tmax^2)"=m.epfu.tmax2,
+                    "psi(.)gam(.)eps(.)p(structure)"=m.epfu.structure,
+                    "psi(.)gam(.)eps(.)p(distance to clutter)"=m.epfu.dis_2_clutter,
+                    "psi(.)gam(.)eps(.)p(canopy)"=m.epfu.canopy,
+                    "psi(.)gam(.)eps(.)p(water)"=m.epfu.water,
+                    "psi(.)gam(.)eps(.)p(water+jdate)"=m.epfu.water.jdate,
+                    "psi(.)gam(.)eps(.)p(water+structure)"=m.epfu.water.structure,
+                    "psi(.)gam(.)eps(.)p(water+tmin)"=m.epfu.water.tmin,
+                    "psi(.)gam(.)eps(.)p(water+tmax)"=m.epfu.water.tmax,
+                    "psi(.)gam(.)eps(.)p(water+tavg)"=m.epfu.water.tavg,
+                    "psi(.)gam(.)eps(.)p(water+clutter)"=m.epfu.water.dis_2_clutter,
+                    "psi(.)gam(.)eps(.)p(water+canopy)"=m.epfu.water.canopy,
+                    "psi(.)gam(.)eps(.)p(water+tree canopy)"=m.epfu.water.tree_canopy,
+                    "psi(.)gam(.)eps(.)p(structure+jdate)"=m.epfu.structure.jdate,
+                    "psi(.)gam(.)eps(.)p(canopy+jdate)"=m.epfu.canopy.jdate,
+                    "psi(.)gam(.)eps(.)p(structure+tmax)"=m.epfu.structure.tmax,
+                    "psi(.)gam(.)eps(.)p(water +/x structure )"=m.epfu.water_structure,
+                    "psi(.)gam(.)eps(.)p(water +/x structure + tmax)"=m.epfu.water_structure.tmax,
+                    "psi(.)gam(.)eps(.)p(water +/x tree_canopy )"=m.epfu.water_tree_canopy
 )
 
-modSel(c.models)
+aictab(cand.set=p.epfu.models,second.ord = FALSE, c.hat=2.61)
+
+
+epfu.p.top_m<-m.epfu.canopy.jdate
+
+epfu_p<-data.frame(expand.grid(
+  j_date=seq(min(na.omit(epfu_umf@obsCovs$j_date)),max(na.omit(epfu_umf@obsCovs$j_date))),
+  canopy=unique(epfu_umf@obsCovs$canopy)))
+
+dp<-predict(epfu.p.top_m, type="det" , newdata=epfu_p, appendData=TRUE)
+
+pd <- position_dodge(0.2) # move them .05 to the left and right
+
+#quick plot
+ggplot(dp,aes(j_date,Predicted,fill=canopy))+
+  geom_line(aes(linetype = canopy),position = pd)+
+  geom_ribbon(aes(ymin=lower, ymax=upper),alpha=0.5,position=pd)+
+  ylab("P")+
+  xlab("Julian date")+
+  ylim(0,1)+
+  theme_pubr()+
+  scale_fill_grey()+
+  theme(axis.title.y = element_text(face = "italic"))
 
 
 
-#Canopy hypotheses:
-#a: test which variable works better category or continuous (continuous)
+# MYSE detection models --------------------------------------------------------
 
-ca.models<-fitList("psi(.)gam(.)eps(.)p(.)"=m.pesu.null,
-                   "psi(.)gam(.)eps(.)p(canopy)"=m.pesu.canopy,
-                   "psi(.)gam(.)eps(.)p(tree canopy)"=m.pesu.tree_canopy
+#cut out myse observations
+names(obs)
+myse<-obs[,c(1,310:337,450:813)]
+names(myse)
+
+
+#make unmarked dataframe
+library(unmarked)
+
+myse_umf <- unmarkedMultFrame(y=as.data.frame(myse[,c(2:29)]),
+                              siteCovs = data.frame(sc=sc),
+                              obsCovs=list(
+                                tmax=as.data.frame(myse[,c(30:57)]),
+                                tmin=as.data.frame(myse[,c(58:85)]),
+                                tavg=as.data.frame(myse[,c(86:113)]),
+                                j_date=as.data.frame(myse[,c(114:141)]),
+                                prcp=as.data.frame(myse[,c(142:169)]),
+                                structure=as.data.frame(myse[,c(198:225)]),
+                                canopy=as.data.frame(myse[,c(226:253)]),
+                                water=as.data.frame(myse[,c(254:281)]),
+                                elev=as.data.frame(myse[,c(282:309)]),
+                                impervious=as.data.frame(myse[,c(310:337)]),
+                                tree_canopy=as.data.frame(myse[,c(338:365)]),
+                                dis_2_clutter=as.data.frame(myse[,c(366:393)])
+                              ),
+                              #yearlySiteCovs=list(
+                              # year=as.data.frame(myse[,c(170:197)])),
+                              numPrimary=7)
+plot(myse_umf)
+summary(myse_umf)
+
+
+#set levels for refernce conditions 
+levels(myse_umf@obsCovs$structure)<-c("field","edge","corridor","interior")
+levels(myse_umf@siteCovs$sc.structure)<-c("field","edge","corridor","interior")
+unique(myse_umf@obsCovs$structure)
+unique(myse_umf@siteCovs$sc.structure)
+
+levels(myse_umf@obsCovs$canopy)<-c("closed","half","open")
+levels(myse_umf@siteCovs$sc.canopy)<-c("closed","half","open")
+unique(myse_umf@obsCovs$canopy)
+unique(myse_umf@siteCovs$sc.canopy)
+
+#global model for c-hat
+library(AICcmodavg)
+
+m.myse.global<-colext(psiformula = ~1, gammaformula = ~1, epsilonformula = ~1, pformula = ~tavg+j_date+structure+tree_canopy+water+elev+dis_2_clutter, data=myse_umf)
+summary(m.myse.global)
+
+#goodness of fit test (takes a long time to run ~4hrs)
+#system.time(myse.gof<-mb.gof.test(m.myse.global,nsim = 1000))
+#myse.gof#c-hat 1.51
+
+### Single covarites
+
+#null 
+m.myse.null<-colext(psiformula = ~1, gammaformula = ~1, epsilonformula = ~1, pformula = ~1, data=myse_umf)
+summary(m.myse.null)      
+
+#J-date 
+m.myse.jdate<-colext(psiformula = ~1, gammaformula = ~1, epsilonformula = ~1, pformula = ~j_date, data=myse_umf)
+summary(m.myse.jdate)  
+
+#J-date2 (wont run)  
+m.myse.jdate2<-colext(psiformula = ~1, gammaformula = ~1, epsilonformula = ~1, pformula = ~j_date+I(j_date^2), data=myse_umf)
+summary(m.myse.jdate2)
+
+#tmin 
+m.myse.tmin<-colext(psiformula = ~1, gammaformula = ~1, epsilonformula = ~1, pformula = ~tmin, data=myse_umf)
+summary(m.myse.tmin)      
+
+#tmin2 
+m.myse.tmin2<-colext(psiformula = ~1, gammaformula = ~1, epsilonformula = ~1, pformula = ~tmin+I(tmin^2), data=myse_umf)
+summary(m.myse.tmin2) 
+
+#tavg 
+m.myse.tavg<-colext(psiformula = ~1, gammaformula = ~1, epsilonformula = ~1, pformula = ~tavg, data=myse_umf)
+summary(m.myse.tavg) 
+
+#tavg 2
+m.myse.tavg2<-colext(psiformula = ~1, gammaformula = ~1, epsilonformula = ~1, pformula = ~tavg+I(tavg^2), data=myse_umf)
+summary(m.myse.tavg2)
+
+#tmax 
+m.myse.tmax<-colext(psiformula = ~1, gammaformula = ~1, epsilonformula = ~1, pformula = ~tmax, data=myse_umf)
+summary(m.myse.tmax) 
+
+#tmax2 
+m.myse.tmax2<-colext(psiformula = ~1, gammaformula = ~1, epsilonformula = ~1, pformula = ~tmax+I(tmax^2), data=myse_umf)
+summary(m.myse.tmax2) 
+
+#structure 
+m.myse.structure<-colext(psiformula = ~1, gammaformula = ~1, epsilonformula = ~1, pformula = ~structure, data=myse_umf)
+summary(m.myse.structure) 
+
+#distance to clutter
+m.myse.dis_2_clutter<-colext(psiformula = ~1, gammaformula = ~1, epsilonformula = ~1, pformula = ~dis_2_clutter, data=myse_umf)
+summary(m.myse.dis_2_clutter) 
+
+#canopy catagory
+m.myse.canopy<-colext(psiformula = ~1, gammaformula = ~1, epsilonformula = ~1, pformula = ~canopy, data=myse_umf)
+summary(m.myse.canopy) 
+
+#PSI canopy catagory 
+m.myse.psicanopy<-colext(psiformula = ~sc.canopy, gammaformula = ~1, epsilonformula = ~1, pformula = ~1, data=myse_umf)
+summary(m.myse.psicanopy) 
+
+
+#canopy continous
+m.myse.tree_canopy<-colext(psiformula = ~1, gammaformula = ~1, epsilonformula = ~1, pformula = ~tree_canopy, data=myse_umf)
+summary(m.myse.tree_canopy) 
+
+#canopy continous2 
+m.myse.tree_canopy2<-colext(psiformula = ~1, gammaformula = ~1, epsilonformula = ~1, pformula = ~tree_canopy+I(tree_canopy^2), data=myse_umf)
+summary(m.myse.tree_canopy2) 
+
+#Water 
+m.myse.water<-colext(psiformula = ~1, gammaformula = ~1, epsilonformula = ~1, pformula = ~water, data=myse_umf)
+summary(m.myse.water) 
+
+p.myse.s.models<-fitList("psi(.)gam(.)eps(.)p(.)"=m.myse.null,
+                         "psi(.)gam(.)eps(.)p(jdate)"=m.myse.jdate,
+                         "psi(.)gam(.)eps(.)p(tree canopy)"=m.myse.tree_canopy,
+                         "psi(.)gam(.)eps(.)p(temp_low)"=m.myse.tmin,
+                         "psi(.)gam(.)eps(.)p(temp_avg)"=m.myse.tavg,
+                         "psi(.)gam(.)eps(.)p(tmax)"=m.myse.tmax,
+                         "psi(.)gam(.)eps(.)p(temp_low^2)"=m.myse.tmin2,
+                         "psi(.)gam(.)eps(.)p(temp_avg^2)"=m.myse.tavg2,
+                         "psi(.)gam(.)eps(.)p(tmax^2)"=m.myse.tmax2,
+                         "psi(.)gam(.)eps(.)p(structure)"=m.myse.structure,
+                         "psi(.)gam(.)eps(.)p(distance to clutter)"=m.myse.dis_2_clutter,
+                         "psi(.)gam(.)eps(.)p(canopy)"=m.myse.canopy,
+                         "psi(.)gam(.)eps(.)p(water)"=m.myse.water
 )
 
-modSel(ca.models)
+modSel(p.myse.s.models)
 
-#b: p or psi? or both? hmmm either via AIC, but not both. but if you look at the coefficients
-#the SE for the PSI model is ~40 times the coefficient. So lets say tree canopy has a weak negative
-#relationship with P, but that is probably better explained with the structure
 
-cb.models<-fitList("psi(.)gam(.)eps(.)p(.)"=m.pesu.null,
-                   "psi(.)gam(.)eps(.)p(canopy)"=m.pesu.canopy,
-                   "psi(.)gam(.)eps(.)p(tree canopy)"=m.pesu.tree_canopy,
-                   "psi(canopy)gam(.)eps(.)p(.)"=m.pesu.canopy,
-                   "psi(tree canopy)gam(.)eps(.)p(.)"=m.pesu.tree_canopy,
-                   "psi(tree canopy)gam(.)eps(.)p(tree canopy)"=m.pesu.tree_canopy.tree_canopy
+#### Additive detection covariates
+
+#water + jdate
+m.myse.water.jdate<-colext(psiformula = ~1, gammaformula = ~1, epsilonformula = ~1, pformula = ~water + j_date, data=myse_umf)
+summary(m.myse.water.jdate) 
+
+#water + structure
+m.myse.water.structure<-colext(psiformula = ~1, gammaformula = ~1, epsilonformula = ~1, pformula = ~water + structure, data=myse_umf)
+summary(m.myse.water.structure) 
+
+#water + tmin
+m.myse.water.tmin<-colext(psiformula = ~1, gammaformula = ~1, epsilonformula = ~1, pformula = ~water + tmin, data=myse_umf)
+summary(m.myse.water.tmin) 
+
+#water + tavg
+m.myse.water.tavg<-colext(psiformula = ~1, gammaformula = ~1, epsilonformula = ~1, pformula = ~water + tavg, data=myse_umf)
+summary(m.myse.water.tavg)
+
+#water + tmax
+m.myse.water.tmax<-colext(psiformula = ~1, gammaformula = ~1, epsilonformula = ~1, pformula = ~water + tmax, data=myse_umf)
+summary(m.myse.water.tmax)
+
+#water + canopy
+m.myse.water.canopy<-colext(psiformula = ~1, gammaformula = ~1, epsilonformula = ~1, pformula = ~water + canopy, data=myse_umf)
+summary(m.myse.water.canopy)
+
+#water + tree canopy 
+m.myse.water.tree_canopy<-colext(psiformula = ~1, gammaformula = ~1, epsilonformula = ~1, pformula = ~water + tree_canopy, data=myse_umf)
+summary(m.myse.water.tree_canopy)
+
+#water + distance to clutter
+m.myse.water.dis_2_clutter<-colext(psiformula = ~1, gammaformula = ~1, epsilonformula = ~1, pformula = ~water + dis_2_clutter, data=myse_umf)
+summary(m.myse.water.dis_2_clutter)
+
+#structure + tmax
+m.myse.structure.tmax<-colext(psiformula = ~1, gammaformula = ~1, epsilonformula = ~1, pformula = ~structure + tmax, data=myse_umf)
+summary(m.myse.structure.tmax)
+
+#structure + jdate
+m.myse.structure.jdate<-colext(psiformula = ~1, gammaformula = ~1, epsilonformula = ~1, pformula = ~structure + j_date, data=myse_umf)
+summary(m.myse.structure.jdate)
+
+
+#canopy + jdate
+m.myse.canopy.jdate<-colext(psiformula = ~1, gammaformula = ~1, epsilonformula = ~1, pformula = ~canopy + j_date, data=myse_umf)
+summary(m.myse.canopy.jdate)
+
+
+#### Interactive detection covariates
+
+#water +/x structure
+m.myse.water_structure<-colext(psiformula = ~1, gammaformula = ~1, epsilonformula = ~1, pformula = ~water*structure, data=myse_umf)
+summary(m.myse.water_structure) 
+
+#water +/x tree_canopy
+m.myse.water_tree_canopy<-colext(psiformula = ~1, gammaformula = ~1, epsilonformula = ~1, pformula = ~water*tree_canopy, data=myse_umf)
+summary(m.myse.water_tree_canopy) 
+
+#water +/x structure + tmax
+m.myse.water_structure.tmax<-colext(psiformula = ~1, gammaformula = ~1, epsilonformula = ~1, pformula = ~water*structure+tmax, data=myse_umf)
+summary(m.myse.water_structure.tmax) 
+
+
+p.myse.models<-list("psi(.)gam(.)eps(.)p(.)"=m.myse.null,
+                    "psi(.)gam(.)eps(.)p(jdate)"=m.myse.jdate,
+                    "psi(.)gam(.)eps(.)p(tree canopy)"=m.myse.tree_canopy,
+                    "psi(.)gam(.)eps(.)p(temp_low)"=m.myse.tmin,
+                    "psi(.)gam(.)eps(.)p(temp_avg)"=m.myse.tavg,
+                    "psi(.)gam(.)eps(.)p(tmax)"=m.myse.tmax,
+                    "psi(.)gam(.)eps(.)p(temp_low^2)"=m.myse.tmin2,
+                    "psi(.)gam(.)eps(.)p(temp_avg^2)"=m.myse.tavg2,
+                    "psi(.)gam(.)eps(.)p(tmax^2)"=m.myse.tmax2,
+                    "psi(.)gam(.)eps(.)p(structure)"=m.myse.structure,
+                    "psi(.)gam(.)eps(.)p(distance to clutter)"=m.myse.dis_2_clutter,
+                    "psi(.)gam(.)eps(.)p(canopy)"=m.myse.canopy,
+                    "psi(.)gam(.)eps(.)p(water)"=m.myse.water,
+                    "psi(.)gam(.)eps(.)p(water+jdate)"=m.myse.water.jdate,
+                    "psi(.)gam(.)eps(.)p(water+structure)"=m.myse.water.structure,
+                    "psi(.)gam(.)eps(.)p(water+tmin)"=m.myse.water.tmin,
+                    "psi(.)gam(.)eps(.)p(water+tmax)"=m.myse.water.tmax,
+                    "psi(.)gam(.)eps(.)p(water+tavg)"=m.myse.water.tavg,
+                    "psi(.)gam(.)eps(.)p(water+clutter)"=m.myse.water.dis_2_clutter,
+                    "psi(.)gam(.)eps(.)p(water+canopy)"=m.myse.water.canopy,
+                    "psi(.)gam(.)eps(.)p(water+tree canopy)"=m.myse.water.tree_canopy,
+                    "psi(.)gam(.)eps(.)p(structure+jdate)"=m.myse.structure.jdate,
+                    "psi(.)gam(.)eps(.)p(canopy+jdate)"=m.myse.canopy.jdate,
+                    "psi(.)gam(.)eps(.)p(structure+tmax)"=m.myse.structure.tmax,
+                    "psi(.)gam(.)eps(.)p(water +/x structure )"=m.myse.water_structure,
+                    "psi(.)gam(.)eps(.)p(water +/x structure + tmax)"=m.myse.water_structure.tmax,
+                    "psi(.)gam(.)eps(.)p(water +/x tree_canopy )"=m.myse.water_tree_canopy
 )
 
-modSel(cb.models)
+aictab(cand.set=p.myse.models,second.ord = FALSE, c.hat=1.51)
+
+#aictab(cand.set = c(m.myse.canopy,m.myse.psicanopy,m.myse.null),second.ord = FALSE, c.hat=1.51)
+
+myse.p.top_m<-m.myse.canopy
 
 
-#all p models
-p.models<-fitList("psi(.)gam(.)eps(.)p(.)"=m.pesu.null,
-                  "psi(.)gam(.)eps(.)p(temp_low)"=m.pesu.tmin,
-                  "psi(.)gam(.)eps(.)p(temp_low^2)"=m.pesu.tavg,
-                  "psi(.)gam(.)eps(.)p(tmax)"=m.pesu.tmax,
-                  "psi(.)gam(.)eps(.)p(structure)"=m.pesu.structure,
-                  "psi(.)gam(.)eps(.)p(distance to clutter)"=m.pesu.dis_2_clutter,
-                  "psi(.)gam(.)eps(.)p(canopy)"=m.pesu.canopy,
-                  "psi(.)gam(.)eps(.)p(water)"=m.pesu.water,
-                  "psi(water)gam(.)eps(.)p(.)"=m.pesu.psi.water,
-                  "psi(water)gam(.)eps(.)p(water)"=m.pesu.water.water,
-                  "psi(.)gam(.)eps(.)p(water +/x structure)"=m.pesu.water.structure
-                  # "psi(.)gam(.)eps(.)p(global)"=m.pesu.p.global
-)
+myse_p<-data.frame(expand.grid(
+  canopy=unique(myse_umf@obsCovs$canopy)))
 
-modSel(p.models)
+dp<-predict(myse.p.top_m, type="det" , newdata=myse_p, appendData=TRUE)
 
+pd <- position_dodge(0.2) # move them .05 to the left and right
 
-#Impervious hypothosis 
-
-#PESU will have a negative association with increases in impervious substrate 
-
-#A compare against p null model to see if it explains additional varitation
-
-m.pesu.psi.impervious<-colext(psiformula = ~sc.impervious, gammaformula = ~1, epsilonformula = ~1, pformula = ~water*structure, data=pesu_umf)
-summary(m.pesu.psi.impervious) 
-
-m.pesu.psi.structure<-colext(psiformula = ~sc.structure, gammaformula = ~1, epsilonformula = ~1, pformula = ~water*structure, data=pesu_umf)
-summary(m.pesu.psi.structure) 
-
-i.models<-fitList("psi(.)gam(.)eps(.)p(.)"=m.pesu.null,
-                  "psi(.)gam(.)eps(.)p(water +/x structure)"=m.pesu.water.structure,
-                  "psi(.)gam(.)eps(.)p(impervious)"=m.pesu.psi.impervious,
-                  "psi(.)gam(.)eps(.)p(structure)"=m.pesu.psi.structure)
-
-modSel(i.models)
+#quick plot
+ggplot(dp,aes(canopy,Predicted,shape=canopy))+
+  geom_point(aes(shape = canopy),size=4,position = pd)+
+  geom_point(position = pd,size=2.5,color="white")+
+  geom_errorbar(aes(ymin=lower, ymax=upper),width=0.05,position=pd)+
+  ylab("P")+
+  xlab("")+
+  ylim(0,1)+
+  theme_pubr()+
+  theme(legend.position = "None")+
+  theme(axis.title.y = element_text(face = "italic"))
 
 
 
@@ -341,20 +796,20 @@ modSel(i.models)
 
 
 
-m.pesu.psi.tree_canopy<-colext(psiformula = ~sc.tree_canopy, gammaformula = ~1, epsilonformula = ~1, pformula = ~1, data=pesu_umf)
-summary(m.pesu.psi.tree_canopy) 
 
-m.pesu.psi.canopy<-colext(psiformula = ~sc.canopy, gammaformula = ~1, epsilonformula = ~1, pformula = ~1, data=pesu_umf)
-summary(m.pesu.psi.canopy) 
 
-m.pesu.tree_canopy.tree_canopy<-colext(psiformula = ~sc.tree_canopy, gammaformula = ~1, epsilonformula = ~1, pformula = ~tree_canopy, data=pesu_umf)
-summary(m.pesu.tree_canopy.tree_canopy) 
 
-m.pesu.psi.water<-colext(psiformula = ~sc.water, gammaformula = ~1, epsilonformula = ~1, pformula = ~1, data=pesu_umf)
-summary(m.pesu.psi.water) 
 
-m.pesu.water.water<-colext(psiformula = ~sc.water, gammaformula = ~1, epsilonformula = ~1, pformula = ~water, data=pesu_umf)
-summary(m.pesu.water.water) 
+
+
+
+
+
+
+
+
+
+
 
 
 
