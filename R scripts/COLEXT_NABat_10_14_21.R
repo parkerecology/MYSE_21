@@ -11,6 +11,9 @@ obs <- read_csv("data/all_sp_umf.csv")
 
 #load site covs 
 library(tidyverse)
+library(ggplot2)
+library(ggpubr)
+
 
 s21 <- read_csv("data/sites_2015_2021.csv")
 s21<-plyr::rename(s21,c("site"="site_code" ))
@@ -270,6 +273,7 @@ ggplot(dp,aes(tavg,Predicted,fill=water))+
   ylab("P")+
   xlab("Average nightly temperature C")+
   ylim(0,1)+
+  ggtitle("PESU")+
   theme_pubr()+
   theme(axis.title.y = element_text(face = "italic"))
 
@@ -525,6 +529,7 @@ ggplot(dp,aes(j_date,Predicted,fill=canopy))+
   ylab("P")+
   xlab("Julian date")+
   ylim(0,1)+
+  ggtitle("EPFU")+
   theme_pubr()+
   scale_fill_grey()+
   theme(axis.title.y = element_text(face = "italic"))
@@ -785,6 +790,7 @@ ggplot(dp,aes(canopy,Predicted,shape=canopy))+
   ylab("P")+
   xlab("")+
   ylim(0,1)+
+  ggtitle("MYSE")+
   theme_pubr()+
   theme(legend.position = "None")+
   theme(axis.title.y = element_text(face = "italic"))
