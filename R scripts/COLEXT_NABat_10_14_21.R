@@ -89,12 +89,17 @@ m.pesu.null<-colext(psiformula = ~1, gammaformula = ~1, epsilonformula = ~1, pfo
 summary(m.pesu.null)      
 
 #J-date 
-m.pesu.jdate<-colext(psiformula = ~1, gammaformula = ~1, epsilonformula = ~1, pformula = ~j_date, data=pesu_umf)
+m.pesu.jdate<-colext(psiformula = ~1, gammaformula = ~1, epsilonformula = ~1, pformula = ~scale(j_date), data=pesu_umf)
 summary(m.pesu.jdate)  
 
-#J-date2 (wont run)  
-m.pesu.jdate2<-colext(psiformula = ~1, gammaformula = ~1, epsilonformula = ~1, pformula = ~j_date+I(j_date^2), data=pesu_umf)
+#J-date2 
+m.pesu.jdate2<-colext(psiformula = ~1, gammaformula = ~1, epsilonformula = ~1, pformula = ~scale(j_date)+I(scale(j_date)^2), data=pesu_umf)
 summary(m.pesu.jdate2)
+
+#J-date3 
+m.pesu.jdate3<-colext(psiformula = ~1, gammaformula = ~1, epsilonformula = ~1, pformula = ~scale(j_date)+I(scale(j_date)^2)+I(scale(j_date)^3), data=pesu_umf)
+summary(m.pesu.jdate3)
+
 
 #tmin 
 m.pesu.tmin<-colext(psiformula = ~1, gammaformula = ~1, epsilonformula = ~1, pformula = ~tmin, data=pesu_umf)
@@ -137,7 +142,7 @@ m.pesu.tree_canopy<-colext(psiformula = ~1, gammaformula = ~1, epsilonformula = 
 summary(m.pesu.tree_canopy) 
 
 #canopy continous2 
-m.pesu.tree_canopy2<-colext(psiformula = ~1, gammaformula = ~1, epsilonformula = ~1, pformula = ~tree_canopy+I(tree_canopy^2), data=pesu_umf)
+m.pesu.tree_canopy2<-colext(psiformula = ~1, gammaformula = ~1, epsilonformula = ~1, pformula = ~scale(tree_canopy)+I(scale(tree_canopy)^2), data=pesu_umf)
 summary(m.pesu.tree_canopy2) 
 
 #Water 
@@ -226,6 +231,8 @@ summary(m.pesu.water_structure.tmax)
 
 p.pesu.models<-list("psi(.)gam(.)eps(.)p(.)"=m.pesu.null,
                          "psi(.)gam(.)eps(.)p(jdate)"=m.pesu.jdate,
+                         "psi(.)gam(.)eps(.)p(jdate2)"=m.pesu.jdate2,
+                         "psi(.)gam(.)eps(.)p(jdate3)"=m.pesu.jdate3,
                          "psi(.)gam(.)eps(.)p(tree canopy)"=m.pesu.tree_canopy,
                          "psi(.)gam(.)eps(.)p(temp_low)"=m.pesu.tmin,
                          "psi(.)gam(.)eps(.)p(temp_avg)"=m.pesu.tavg,
@@ -809,6 +816,11 @@ library(MuMIn)
 pesu.d<-dredge(m.pesu.global,rank = "QAIC", chat = 2.23, fixed = "p(Int)")
 epfu.d<-dredge(m.epfu.global,rank = "QAIC", chat = 2.61, fixed = "p(Int)")
 myse.d<-dredge(m.myse.global,rank = "QAIC", chat = 1.51, fixed = "p(Int)")
+
+
+
+
+
 
 
 
