@@ -78,6 +78,12 @@ summary(pesu_umf)
 pesu_umf<-pesu_umf[which(siteCovs(pesu_umf)$sc.site_code!="C108-S7"&siteCovs(pesu_umf)$sc.site_code!="C81-S4"),]
 summary(pesu_umf)
 
+#scale numeric obs covs
+pesu_umf@obsCovs<-
+  pesu_umf@obsCovs%>%
+  mutate_if(is.numeric,scale)
+
+
 #set levels for refernce conditions 
 levels(pesu_umf@obsCovs$structure)<-c("field","edge","corridor","interior")
 levels(pesu_umf@siteCovs$sc.structure)<-c("field","edge","corridor","interior")
@@ -281,7 +287,6 @@ aictab(cand.set=p.pesu.models,second.ord = FALSE, c.hat=2.23)
 
 pesu.p.top_m<-m.pesu.water.tavg
 
-
 pesu_p<-data.frame(expand.grid(
   tavg=seq(min(na.omit(pesu_umf@obsCovs$tavg)),max(na.omit(pesu_umf@obsCovs$tavg))),
   water=unique(pesu_umf@obsCovs$water)))
@@ -340,10 +345,25 @@ plot(epfu_umf)
 summary(epfu_umf)
 
 
+#test scaling vars 
+# epfu_umf@obsCovs$tmin<-scale(epfu_umf@obsCovs$tmin)
+# epfu_umf@obsCovs$tavg<-scale(epfu_umf@obsCovs$tavg)
+# epfu_umf@obsCovs$tmax<-scale(epfu_umf@obsCovs$tmax)
+# epfu_umf@obsCovs$tree_canopy<-scale(epfu_umf@obsCovs$tree_canopy)
+# epfu_umf@obsCovs$j_date<-scale(epfu_umf@obsCovs$j_date)
+# epfu_umf@obsCovs$dis_2_clutter<-scale(epfu_umf@obsCovs$dis_2_clutter)
+# epfu_umf@obsCovs$elev<-scale(epfu_umf@obsCovs$elev)
+# epfu_umf@obsCovs$impervious<-scale(epfu_umf@obsCovs$impervious)
+# 
+
+epfu_umf@obsCovs<-
+epfu_umf@obsCovs%>%
+  mutate_if(is.numeric,scale)
+
 #subset out doubled sites
 
-myse_umf<-myse_umf[which(siteCovs(myse_umf)$sc.site_code!="C108-S7"&siteCovs(myse_umf)$sc.site_code!="C81-S4"),]
-summary(myse_umf)
+epfu_umf<-epfu_umf[which(siteCovs(epfu_umf)$sc.site_code!="C108-S7"&siteCovs(epfu_umf)$sc.site_code!="C81-S4"),]
+summary(epfu_umf)
 
 
 #set levels for refernce conditions 
@@ -360,7 +380,7 @@ unique(epfu_umf@siteCovs$sc.canopy)
 #global model for c-hat
 library(AICcmodavg)
 
-m.epfu.global<-colext(psiformula = ~1, gammaformula = ~1, epsilonformula = ~1, pformula = ~tavg+j_date+structure+tree_canopy+water+elev+dis_2_clutter, data=epfu_umf)
+m.epfu.global<-colext(psiformula = ~1, gammaformula = ~1, epsilonformula = ~1, pformula = ~tmin+tavg+tmax+j_date+structure+tree_canopy+canopy+water+elev+dis_2_clutter+impervious, data=epfu_umf)
 summary(m.epfu.global)
 
 #goodness of fit test (takes a long time to run ~4hrs)
@@ -601,9 +621,13 @@ summary(myse_umf)
 
 #subset out doubled sites
 
-epfu_umf<-epfu_umf[which(siteCovs(epfu_umf)$sc.site_code!="C108-S7"&siteCovs(epfu_umf)$sc.site_code!="C81-S4"),]
-summary(epfu_umf)
+myse_umf<-myse_umf[which(siteCovs(myse_umf)$sc.site_code!="C108-S7"&siteCovs(myse_umf)$sc.site_code!="C81-S4"),]
+summary(myse_umf)
 
+#scale numeric obs covs
+myse_umf@obsCovs<-
+  myse_umf@obsCovs%>%
+  mutate_if(is.numeric,scale)
 
 
 #set levels for refernce conditions 
@@ -837,7 +861,7 @@ ggplot(dp,aes(canopy,Predicted,shape=canopy))+
 
 
 
-# Model selection with dredge ---------------------------------------------
+# P Model selection with dredge ---------------------------------------------
 
 #testing dredge
 library(MuMIn)
@@ -892,6 +916,7 @@ library(MuMIn)
 # gsub(",","+",a)
 
 
+
 m.psi.pesu.global<-colext(
                       psiformula = ~sc.structure+sc.canopy+sc.elev+sc.impervious+
                             sc.tree_canopy+sc.dis_2_clutter+sc.urban500m_mean+sc.urban500m_median+
@@ -906,6 +931,7 @@ m.psi.pesu.global<-colext(
                       data=pesu_umf)
 summary(m.psi.pesu.global)
 
+
 m.psi.epfu.global<-colext(
                       psiformula = ~sc.structure+sc.water+sc.elev+sc.impervious+
                             sc.tree_canopy+sc.dis_2_clutter+sc.urban500m_mean+sc.urban500m_median+
@@ -917,6 +943,7 @@ m.psi.epfu.global<-colext(
                       gammaformula = ~1, 
                       epsilonformula = ~1, 
                       pformula = ~j_date+canopy, data=epfu_umf)
+
 summary(m.psi.epfu.global)
 
 m.psi.myse.global<-colext( 
@@ -932,8 +959,11 @@ m.psi.myse.global<-colext(
                       pformula = ~canopy, data=myse_umf)
 summary(m.psi.myse.global)
 
+#Dredge for best models 
 
-system.time(pesu.d<-dredge(m.psi.pesu.global,rank = "QAIC", chat = 2.23, m.lim =c(0,5), fixed = "psi(Int)",
+print(
+system.time(
+  pesu.d<-dredge(m.psi.pesu.global,rank = "QAIC", chat = 2.23,trace = 2,m.lim =c(0,5), fixed =c("psi(Int)","p(tavg)","p(water"),
                subset = !("psi(sc.canopy5km_mean)" && "psi(sc.canopy5km_median)"|
                             "psi(sc.canopy2500m_mean)" && "psi(sc.canopy2500m_median)"|
                             "psi(sc.canopy1km_mean)" && "psi(sc.canopy1km_median)"|
@@ -942,10 +972,51 @@ system.time(pesu.d<-dredge(m.psi.pesu.global,rank = "QAIC", chat = 2.23, m.lim =
                             "psi(sc.urban2500m_mean)" && "psi(sc.urban2500m_median)"|
                             "psi(sc.urban1km_mean)" && "psi(sc.urban1km_median)"|
                             "psi(sc.urban500m_median)" && "psi(sc.urban1km_mean)"
-                            )))
+                            ))))
 
-epfu.d<-dredge(m.psi.epfu.global,rank = "QAIC", chat = 2.61, fixed = "psi(Int)")
-myse.d<-dredge(m.psi.myse.global,rank = "QAIC", chat = 1.51, fixed = "p(Int)")
+print(
+system.time(
+epfu.d<-dredge(m.psi.epfu.global,rank = "QAIC",trace = 2, chat = 2.61, m.lim =c(0,5), fixed = c("psi(Int)","p(j_date","p(canopy)"),
+               subset = !("psi(sc.canopy5km_mean)" && "psi(sc.canopy5km_median)"|
+                            "psi(sc.canopy2500m_mean)" && "psi(sc.canopy2500m_median)"|
+                            "psi(sc.canopy1km_mean)" && "psi(sc.canopy1km_median)"|
+                            "psi(sc.canopy500m_mean)" && "psi(sc.canopy500m_median)"|
+                            "psi(sc.urban5km_mean)" && "psi(sc.urban5km_median)"|
+                            "psi(sc.urban2500m_mean)" && "psi(sc.urban2500m_median)"|
+                            "psi(sc.urban1km_mean)" && "psi(sc.urban1km_median)"|
+                            "psi(sc.urban500m_median)" && "psi(sc.urban1km_mean)"
+               ))))
 
 
+
+print(
+system.time(
+myse.d<-dredge(m.psi.myse.global,rank = "QAIC", trace = 2,m.lim =c(0,4), chat = 1.51, fixed = c("p(Int)","p(canopy)"),
+               subset = !("psi(sc.canopy5km_mean)" && "psi(sc.canopy5km_median)"|
+                            "psi(sc.canopy2500m_mean)" && "psi(sc.canopy2500m_median)"|
+                            "psi(sc.canopy1km_mean)" && "psi(sc.canopy1km_median)"|
+                            "psi(sc.canopy500m_mean)" && "psi(sc.canopy500m_median)"|
+                            "psi(sc.urban5km_mean)" && "psi(sc.urban5km_median)"|
+                            "psi(sc.urban2500m_mean)" && "psi(sc.urban2500m_median)"|
+                            "psi(sc.urban1km_mean)" && "psi(sc.urban1km_median)"|
+                            "psi(sc.urban500m_median)" && "psi(sc.urban1km_mean)"
+               ))))
+
+
+
+#write the model selection tables to .csv files 
+getwd()
+setwd("~/github/MYSE_21/data")
+write_csv(pesu.d,"pesu_mod_sel_dredge.csv")
+write_csv(epfu.d,"epfu_mod_sel_dredge.csv")
+write_csv(myse.d,"myse_mod_sel_dredge.csv")
+setwd("~/github/MYSE_21")
+
+
+#top model from dredge
+#PESU
+m.pesu.td<-colext(psiformula = ~sc.urban5km_median, gammaformula = ~1, epsilonformula = ~1, pformula = ~water + tavg, data=pesu_umf)
+summary(m.pesu.td)
+
+#EPFU
 
