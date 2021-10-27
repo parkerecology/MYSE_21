@@ -910,11 +910,71 @@ library(MuMIn)
 # PSI model selection with dredge -----------------------------------------
 
 # #get a list of covarites for the global model
-# a<-paste0(names(pesu_umf@siteCovs),collapse = ",")
-# 
-# #separate it by + instead of ,
-# gsub(",","+",a)
+a<-data.frame(name=names(pesu_umf@siteCovs))
 
+#separate it by + instead of ,
+gsub(",","+",a)
+
+library(stringr)
+urb<-
+a%>%
+  filter(str_detect(name,"urban"))%>%
+  mutate(name = paste0("psi(", name, ")"))
+  
+
+can<-
+  a%>%
+  filter(str_detect(name,"canopy[:digit:]"))%>%
+  mutate(name = paste0("psi(", name, ")"))
+
+#vif(m.psi.pesu.global,"psi")
+
+length(urb$name)
+
+# Create a list of models that should not be run together
+
+#make a expand.grid function that excludes duplicates
+expand.grid.unique <- function(x, y, include.equals=FALSE)
+{
+  x <- unique(x)
+  
+  y <- unique(y)
+  
+  g <- function(i)
+  {
+    z <- setdiff(y, x[seq_len(i-include.equals)])
+    
+    if(length(z)) cbind(x[i], z, deparse.level=0)
+  }
+  
+  do.call(rbind, lapply(seq_along(x), g))
+}
+
+#get all combinations
+ca<-data.frame(expand.grid.unique(can$name,can$name))
+
+#add logical operators
+ca$and<-"&&"
+ca$or<-"|"
+
+#reorder for printing
+ca<-ca[,c(1,3,2,4)]
+
+#remove escape backslashes
+cat(paste("",ca$X1,ca$and,ca$X2,ca$or,sep = '"'))
+
+#get urban model names
+ur<-data.frame(expand.grid.unique(urb$name,urb$name))
+
+#add logical operators
+ur$and<-"&&"
+ur$or<-"|"
+
+#reorder
+ur<-ur[,c(1,3,2,4)]
+
+#remove escape backslashes
+cat(paste("",ur$X1,ur$and,ur$X2,ur$or,sep = '"'))
 
 
 m.psi.pesu.global<-colext(
@@ -961,30 +1021,132 @@ summary(m.psi.myse.global)
 
 #Dredge for best models 
 
+
+
+
 print(
-system.time(
-  pesu.d<-dredge(m.psi.pesu.global,rank = "QAIC", chat = 2.23,trace = 2,m.lim =c(0,5), fixed =c("psi(Int)","p(tavg)","p(water"),
-               subset = !("psi(sc.canopy5km_mean)" && "psi(sc.canopy5km_median)"|
-                            "psi(sc.canopy2500m_mean)" && "psi(sc.canopy2500m_median)"|
-                            "psi(sc.canopy1km_mean)" && "psi(sc.canopy1km_median)"|
-                            "psi(sc.canopy500m_mean)" && "psi(sc.canopy500m_median)"|
-                            "psi(sc.urban5km_mean)" && "psi(sc.urban5km_median)"|
-                            "psi(sc.urban2500m_mean)" && "psi(sc.urban2500m_median)"|
-                            "psi(sc.urban1km_mean)" && "psi(sc.urban1km_median)"|
-                            "psi(sc.urban500m_median)" && "psi(sc.urban1km_mean)"
-                            ))))
+  system.time(
+    pesu.d<-dredge(m.psi.pesu.global,rank = "QAIC", chat = 2.23,trace =2,m.lim =c(0,5), fixed =c("psi(Int)","p(tavg)","p(water)"),
+                    subset = !("psi(sc.canopy500m_mean)"&&"psi(sc.canopy500m_median)"| 
+                                 "psi(sc.canopy500m_mean)"&&"psi(sc.canopy1km_mean)"| 
+                                 "psi(sc.canopy500m_mean)"&&"psi(sc.canopy1km_median)"| 
+                                 "psi(sc.canopy500m_mean)"&&"psi(sc.canopy2500m_mean)"| 
+                                 "psi(sc.canopy500m_mean)"&&"psi(sc.canopy2500m_median)"| 
+                                 "psi(sc.canopy500m_mean)"&&"psi(sc.canopy5km_mean)"| 
+                                 "psi(sc.canopy500m_mean)"&&"psi(sc.canopy5km_median)"|
+                                 "psi(sc.canopy500m_median)"&&"psi(sc.canopy1km_mean)"| 
+                                 "psi(sc.canopy500m_median)"&&"psi(sc.canopy1km_median)"| 
+                                 "psi(sc.canopy500m_median)"&&"psi(sc.canopy2500m_mean)"| 
+                                 "psi(sc.canopy500m_median)"&&"psi(sc.canopy2500m_median)"| 
+                                 "psi(sc.canopy500m_median)"&&"psi(sc.canopy5km_mean)"| 
+                                 "psi(sc.canopy500m_median)"&&"psi(sc.canopy5km_median)"| 
+                                 "psi(sc.canopy1km_mean)"&&"psi(sc.canopy1km_median)"| 
+                                 "psi(sc.canopy1km_mean)"&&"psi(sc.canopy2500m_mean)"| 
+                                 "psi(sc.canopy1km_mean)"&&"psi(sc.canopy2500m_median)"| 
+                                 "psi(sc.canopy1km_mean)"&&"psi(sc.canopy5km_mean)"| 
+                                 "psi(sc.canopy1km_mean)"&&"psi(sc.canopy5km_median)"| 
+                                 "psi(sc.canopy1km_median)"&&"psi(sc.canopy2500m_mean)"| 
+                                 "psi(sc.canopy1km_median)"&&"psi(sc.canopy2500m_median)"|
+                                 "psi(sc.canopy1km_median)"&&"psi(sc.canopy5km_mean)"| 
+                                 "psi(sc.canopy1km_median)"&&"psi(sc.canopy5km_median)"| 
+                                 "psi(sc.canopy2500m_mean)"&&"psi(sc.canopy2500m_median)"| 
+                                 "psi(sc.canopy2500m_mean)"&&"psi(sc.canopy5km_mean)"| 
+                                 "psi(sc.canopy2500m_mean)"&&"psi(sc.canopy5km_median)"| 
+                                 "psi(sc.canopy2500m_median)"&&"psi(sc.canopy5km_mean)"|
+                                 "psi(sc.canopy2500m_median)"&&"psi(sc.canopy5km_median)"| 
+                                 "psi(sc.canopy5km_mean)"&&"psi(sc.canopy5km_median)"|
+                                 "psi(sc.urban500m_mean)"&&"psi(sc.urban500m_median)"| 
+                                 "psi(sc.urban500m_mean)"&&"psi(sc.urban1km_mean)"| 
+                                 "psi(sc.urban500m_mean)"&&"psi(sc.urban1km_median)"| 
+                                 "psi(sc.urban500m_mean)"&&"psi(sc.urban2500m_mean)"| 
+                                 "psi(sc.urban500m_mean)"&&"psi(sc.urban2500m_median)"| 
+                                 "psi(sc.urban500m_mean)"&&"psi(sc.urban5km_mean)"| 
+                                 "psi(sc.urban500m_mean)"&&"psi(sc.urban5km_median)"| 
+                                 "psi(sc.urban500m_median)"&&"psi(sc.urban1km_mean)"| 
+                                 "psi(sc.urban500m_median)"&&"psi(sc.urban1km_median)"| 
+                                 "psi(sc.urban500m_median)"&&"psi(sc.urban2500m_mean)"| 
+                                 "psi(sc.urban500m_median)"&&"psi(sc.urban2500m_median)"| 
+                                 "psi(sc.urban500m_median)"&&"psi(sc.urban5km_mean)"| 
+                                 "psi(sc.urban500m_median)"&&"psi(sc.urban5km_median)"| 
+                                 "psi(sc.urban1km_mean)"&&"psi(sc.urban1km_median)"| 
+                                 "psi(sc.urban1km_mean)"&&"psi(sc.urban2500m_mean)"| 
+                                 "psi(sc.urban1km_mean)"&&"psi(sc.urban2500m_median)"|
+                                 "psi(sc.urban1km_mean)"&&"psi(sc.urban5km_mean)"| 
+                                 "psi(sc.urban1km_mean)"&&"psi(sc.urban5km_median)"| 
+                                 "psi(sc.urban1km_median)"&&"psi(sc.urban2500m_mean)"| 
+                                 "psi(sc.urban1km_median)"&&"psi(sc.urban2500m_median)"| 
+                                 "psi(sc.urban1km_median)"&&"psi(sc.urban5km_mean)"| 
+                                 "psi(sc.urban1km_median)"&&"psi(sc.urban5km_median)"| 
+                                 "psi(sc.urban2500m_mean)"&&"psi(sc.urban2500m_median)"| 
+                                 "psi(sc.urban2500m_mean)"&&"psi(sc.urban5km_mean)"| 
+                                 "psi(sc.urban2500m_mean)"&&"psi(sc.urban5km_median)"| 
+                                 "psi(sc.urban2500m_median)"&&"psi(sc.urban5km_mean)"| 
+                                 "psi(sc.urban2500m_median)"&&"psi(sc.urban5km_median)"| 
+                                 "psi(sc.urban5km_mean)"&&"psi(sc.urban5km_median)"
+                           ))))
+
+
+
 
 print(
 system.time(
 epfu.d<-dredge(m.psi.epfu.global,rank = "QAIC",trace = 2, chat = 2.61, m.lim =c(0,5), fixed = c("psi(Int)","p(j_date","p(canopy)"),
-               subset = !("psi(sc.canopy5km_mean)" && "psi(sc.canopy5km_median)"|
-                            "psi(sc.canopy2500m_mean)" && "psi(sc.canopy2500m_median)"|
-                            "psi(sc.canopy1km_mean)" && "psi(sc.canopy1km_median)"|
-                            "psi(sc.canopy500m_mean)" && "psi(sc.canopy500m_median)"|
-                            "psi(sc.urban5km_mean)" && "psi(sc.urban5km_median)"|
-                            "psi(sc.urban2500m_mean)" && "psi(sc.urban2500m_median)"|
-                            "psi(sc.urban1km_mean)" && "psi(sc.urban1km_median)"|
-                            "psi(sc.urban500m_median)" && "psi(sc.urban1km_mean)"
+               subset = !("psi(sc.canopy500m_mean)"&&"psi(sc.canopy500m_median)"| 
+                            "psi(sc.canopy500m_mean)"&&"psi(sc.canopy1km_mean)"| 
+                            "psi(sc.canopy500m_mean)"&&"psi(sc.canopy1km_median)"| 
+                            "psi(sc.canopy500m_mean)"&&"psi(sc.canopy2500m_mean)"| 
+                            "psi(sc.canopy500m_mean)"&&"psi(sc.canopy2500m_median)"| 
+                            "psi(sc.canopy500m_mean)"&&"psi(sc.canopy5km_mean)"| 
+                            "psi(sc.canopy500m_mean)"&&"psi(sc.canopy5km_median)"|
+                            "psi(sc.canopy500m_median)"&&"psi(sc.canopy1km_mean)"| 
+                            "psi(sc.canopy500m_median)"&&"psi(sc.canopy1km_median)"| 
+                            "psi(sc.canopy500m_median)"&&"psi(sc.canopy2500m_mean)"| 
+                            "psi(sc.canopy500m_median)"&&"psi(sc.canopy2500m_median)"| 
+                            "psi(sc.canopy500m_median)"&&"psi(sc.canopy5km_mean)"| 
+                            "psi(sc.canopy500m_median)"&&"psi(sc.canopy5km_median)"| 
+                            "psi(sc.canopy1km_mean)"&&"psi(sc.canopy1km_median)"| 
+                            "psi(sc.canopy1km_mean)"&&"psi(sc.canopy2500m_mean)"| 
+                            "psi(sc.canopy1km_mean)"&&"psi(sc.canopy2500m_median)"| 
+                            "psi(sc.canopy1km_mean)"&&"psi(sc.canopy5km_mean)"| 
+                            "psi(sc.canopy1km_mean)"&&"psi(sc.canopy5km_median)"| 
+                            "psi(sc.canopy1km_median)"&&"psi(sc.canopy2500m_mean)"| 
+                            "psi(sc.canopy1km_median)"&&"psi(sc.canopy2500m_median)"|
+                            "psi(sc.canopy1km_median)"&&"psi(sc.canopy5km_mean)"| 
+                            "psi(sc.canopy1km_median)"&&"psi(sc.canopy5km_median)"| 
+                            "psi(sc.canopy2500m_mean)"&&"psi(sc.canopy2500m_median)"| 
+                            "psi(sc.canopy2500m_mean)"&&"psi(sc.canopy5km_mean)"| 
+                            "psi(sc.canopy2500m_mean)"&&"psi(sc.canopy5km_median)"| 
+                            "psi(sc.canopy2500m_median)"&&"psi(sc.canopy5km_mean)"|
+                            "psi(sc.canopy2500m_median)"&&"psi(sc.canopy5km_median)"| 
+                            "psi(sc.canopy5km_mean)"&&"psi(sc.canopy5km_median)"|
+                            "psi(sc.urban500m_mean)"&&"psi(sc.urban500m_median)"| 
+                            "psi(sc.urban500m_mean)"&&"psi(sc.urban1km_mean)"| 
+                            "psi(sc.urban500m_mean)"&&"psi(sc.urban1km_median)"| 
+                            "psi(sc.urban500m_mean)"&&"psi(sc.urban2500m_mean)"| 
+                            "psi(sc.urban500m_mean)"&&"psi(sc.urban2500m_median)"| 
+                            "psi(sc.urban500m_mean)"&&"psi(sc.urban5km_mean)"| 
+                            "psi(sc.urban500m_mean)"&&"psi(sc.urban5km_median)"| 
+                            "psi(sc.urban500m_median)"&&"psi(sc.urban1km_mean)"| 
+                            "psi(sc.urban500m_median)"&&"psi(sc.urban1km_median)"| 
+                            "psi(sc.urban500m_median)"&&"psi(sc.urban2500m_mean)"| 
+                            "psi(sc.urban500m_median)"&&"psi(sc.urban2500m_median)"| 
+                            "psi(sc.urban500m_median)"&&"psi(sc.urban5km_mean)"| 
+                            "psi(sc.urban500m_median)"&&"psi(sc.urban5km_median)"| 
+                            "psi(sc.urban1km_mean)"&&"psi(sc.urban1km_median)"| 
+                            "psi(sc.urban1km_mean)"&&"psi(sc.urban2500m_mean)"| 
+                            "psi(sc.urban1km_mean)"&&"psi(sc.urban2500m_median)"|
+                            "psi(sc.urban1km_mean)"&&"psi(sc.urban5km_mean)"| 
+                            "psi(sc.urban1km_mean)"&&"psi(sc.urban5km_median)"| 
+                            "psi(sc.urban1km_median)"&&"psi(sc.urban2500m_mean)"| 
+                            "psi(sc.urban1km_median)"&&"psi(sc.urban2500m_median)"| 
+                            "psi(sc.urban1km_median)"&&"psi(sc.urban5km_mean)"| 
+                            "psi(sc.urban1km_median)"&&"psi(sc.urban5km_median)"| 
+                            "psi(sc.urban2500m_mean)"&&"psi(sc.urban2500m_median)"| 
+                            "psi(sc.urban2500m_mean)"&&"psi(sc.urban5km_mean)"| 
+                            "psi(sc.urban2500m_mean)"&&"psi(sc.urban5km_median)"| 
+                            "psi(sc.urban2500m_median)"&&"psi(sc.urban5km_mean)"| 
+                            "psi(sc.urban2500m_median)"&&"psi(sc.urban5km_median)"| 
+                            "psi(sc.urban5km_mean)"&&"psi(sc.urban5km_median)"
                ))))
 
 
@@ -992,14 +1154,62 @@ epfu.d<-dredge(m.psi.epfu.global,rank = "QAIC",trace = 2, chat = 2.61, m.lim =c(
 print(
 system.time(
 myse.d<-dredge(m.psi.myse.global,rank = "QAIC", trace = 2,m.lim =c(0,4), chat = 1.51, fixed = c("p(Int)","p(canopy)"),
-               subset = !("psi(sc.canopy5km_mean)" && "psi(sc.canopy5km_median)"|
-                            "psi(sc.canopy2500m_mean)" && "psi(sc.canopy2500m_median)"|
-                            "psi(sc.canopy1km_mean)" && "psi(sc.canopy1km_median)"|
-                            "psi(sc.canopy500m_mean)" && "psi(sc.canopy500m_median)"|
-                            "psi(sc.urban5km_mean)" && "psi(sc.urban5km_median)"|
-                            "psi(sc.urban2500m_mean)" && "psi(sc.urban2500m_median)"|
-                            "psi(sc.urban1km_mean)" && "psi(sc.urban1km_median)"|
-                            "psi(sc.urban500m_median)" && "psi(sc.urban1km_mean)"
+               subset = !("psi(sc.canopy500m_mean)"&&"psi(sc.canopy500m_median)"| 
+                            "psi(sc.canopy500m_mean)"&&"psi(sc.canopy1km_mean)"| 
+                            "psi(sc.canopy500m_mean)"&&"psi(sc.canopy1km_median)"| 
+                            "psi(sc.canopy500m_mean)"&&"psi(sc.canopy2500m_mean)"| 
+                            "psi(sc.canopy500m_mean)"&&"psi(sc.canopy2500m_median)"| 
+                            "psi(sc.canopy500m_mean)"&&"psi(sc.canopy5km_mean)"| 
+                            "psi(sc.canopy500m_mean)"&&"psi(sc.canopy5km_median)"|
+                            "psi(sc.canopy500m_median)"&&"psi(sc.canopy1km_mean)"| 
+                            "psi(sc.canopy500m_median)"&&"psi(sc.canopy1km_median)"| 
+                            "psi(sc.canopy500m_median)"&&"psi(sc.canopy2500m_mean)"| 
+                            "psi(sc.canopy500m_median)"&&"psi(sc.canopy2500m_median)"| 
+                            "psi(sc.canopy500m_median)"&&"psi(sc.canopy5km_mean)"| 
+                            "psi(sc.canopy500m_median)"&&"psi(sc.canopy5km_median)"| 
+                            "psi(sc.canopy1km_mean)"&&"psi(sc.canopy1km_median)"| 
+                            "psi(sc.canopy1km_mean)"&&"psi(sc.canopy2500m_mean)"| 
+                            "psi(sc.canopy1km_mean)"&&"psi(sc.canopy2500m_median)"| 
+                            "psi(sc.canopy1km_mean)"&&"psi(sc.canopy5km_mean)"| 
+                            "psi(sc.canopy1km_mean)"&&"psi(sc.canopy5km_median)"| 
+                            "psi(sc.canopy1km_median)"&&"psi(sc.canopy2500m_mean)"| 
+                            "psi(sc.canopy1km_median)"&&"psi(sc.canopy2500m_median)"|
+                            "psi(sc.canopy1km_median)"&&"psi(sc.canopy5km_mean)"| 
+                            "psi(sc.canopy1km_median)"&&"psi(sc.canopy5km_median)"| 
+                            "psi(sc.canopy2500m_mean)"&&"psi(sc.canopy2500m_median)"| 
+                            "psi(sc.canopy2500m_mean)"&&"psi(sc.canopy5km_mean)"| 
+                            "psi(sc.canopy2500m_mean)"&&"psi(sc.canopy5km_median)"| 
+                            "psi(sc.canopy2500m_median)"&&"psi(sc.canopy5km_mean)"|
+                            "psi(sc.canopy2500m_median)"&&"psi(sc.canopy5km_median)"| 
+                            "psi(sc.canopy5km_mean)"&&"psi(sc.canopy5km_median)"|
+                            "psi(sc.urban500m_mean)"&&"psi(sc.urban500m_median)"| 
+                            "psi(sc.urban500m_mean)"&&"psi(sc.urban1km_mean)"| 
+                            "psi(sc.urban500m_mean)"&&"psi(sc.urban1km_median)"| 
+                            "psi(sc.urban500m_mean)"&&"psi(sc.urban2500m_mean)"| 
+                            "psi(sc.urban500m_mean)"&&"psi(sc.urban2500m_median)"| 
+                            "psi(sc.urban500m_mean)"&&"psi(sc.urban5km_mean)"| 
+                            "psi(sc.urban500m_mean)"&&"psi(sc.urban5km_median)"| 
+                            "psi(sc.urban500m_median)"&&"psi(sc.urban1km_mean)"| 
+                            "psi(sc.urban500m_median)"&&"psi(sc.urban1km_median)"| 
+                            "psi(sc.urban500m_median)"&&"psi(sc.urban2500m_mean)"| 
+                            "psi(sc.urban500m_median)"&&"psi(sc.urban2500m_median)"| 
+                            "psi(sc.urban500m_median)"&&"psi(sc.urban5km_mean)"| 
+                            "psi(sc.urban500m_median)"&&"psi(sc.urban5km_median)"| 
+                            "psi(sc.urban1km_mean)"&&"psi(sc.urban1km_median)"| 
+                            "psi(sc.urban1km_mean)"&&"psi(sc.urban2500m_mean)"| 
+                            "psi(sc.urban1km_mean)"&&"psi(sc.urban2500m_median)"|
+                            "psi(sc.urban1km_mean)"&&"psi(sc.urban5km_mean)"| 
+                            "psi(sc.urban1km_mean)"&&"psi(sc.urban5km_median)"| 
+                            "psi(sc.urban1km_median)"&&"psi(sc.urban2500m_mean)"| 
+                            "psi(sc.urban1km_median)"&&"psi(sc.urban2500m_median)"| 
+                            "psi(sc.urban1km_median)"&&"psi(sc.urban5km_mean)"| 
+                            "psi(sc.urban1km_median)"&&"psi(sc.urban5km_median)"| 
+                            "psi(sc.urban2500m_mean)"&&"psi(sc.urban2500m_median)"| 
+                            "psi(sc.urban2500m_mean)"&&"psi(sc.urban5km_mean)"| 
+                            "psi(sc.urban2500m_mean)"&&"psi(sc.urban5km_median)"| 
+                            "psi(sc.urban2500m_median)"&&"psi(sc.urban5km_mean)"| 
+                            "psi(sc.urban2500m_median)"&&"psi(sc.urban5km_median)"| 
+                            "psi(sc.urban5km_mean)"&&"psi(sc.urban5km_median)"
                ))))
 
 
