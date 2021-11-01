@@ -3,7 +3,7 @@
 ###############  NABat COLEXT models 2015-2021 ###################
 
 
-options(scipen=6)
+options(scipen=5)#set to scintific notation over 5 places
 
 #load observation covs and presence absence data
 setwd("~/github/MYSE_21")
@@ -37,7 +37,11 @@ sc<-merge(sc,cu,by=c("site_code"),all.x = TRUE)
 
 #sc<-s21[,-c(1,6:7)]#drop vars not needed by col number
 
+ggplot(sc,aes(scale(urban5km_mean),scale(canopy5km_mean)))+
+   geom_point()
 
+ggplot(sc,aes(scale(urban5km_median),scale(canopy5km_median)))+
+  geom_point()
 
 # PESU detection models ---------------------------------------------------
 
@@ -81,6 +85,11 @@ summary(pesu_umf)
 #scale numeric obs covs
 pesu_umf@obsCovs<-
   pesu_umf@obsCovs%>%
+  mutate_if(is.numeric,scale)
+
+#scale numeric site covs
+pesu_umf@siteCovs<-
+  pesu_umf@siteCovs%>%
   mutate_if(is.numeric,scale)
 
 
@@ -356,9 +365,17 @@ summary(epfu_umf)
 # epfu_umf@obsCovs$impervious<-scale(epfu_umf@obsCovs$impervious)
 # 
 
+#scale numeric obs covs
 epfu_umf@obsCovs<-
 epfu_umf@obsCovs%>%
   mutate_if(is.numeric,scale)
+
+#scale numeric site covs
+epfu_umf@siteCovs<-
+  epfu_umf@siteCovs%>%
+  mutate_if(is.numeric,scale)
+
+
 
 #subset out doubled sites
 
@@ -629,6 +646,11 @@ myse_umf@obsCovs<-
   myse_umf@obsCovs%>%
   mutate_if(is.numeric,scale)
 
+#scale numeric site covs
+myse_umf@siteCovs<-
+  myse_umf@siteCovs%>%
+  mutate_if(is.numeric,scale)
+
 
 #set levels for refernce conditions 
 levels(myse_umf@obsCovs$structure)<-c("field","edge","corridor","interior")
@@ -883,30 +905,6 @@ library(MuMIn)
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 # PSI model selection with dredge -----------------------------------------
 
 # #get a list of covarites for the global model
@@ -977,6 +975,8 @@ ur<-ur[,c(1,3,2,4)]
 cat(paste("",ur$X1,ur$and,ur$X2,ur$or,sep = '"'))
 
 
+
+#make the global models
 m.psi.pesu.global<-colext(
                       psiformula = ~sc.structure+sc.canopy+sc.elev+sc.impervious+
                             sc.tree_canopy+sc.dis_2_clutter+sc.urban500m_mean+sc.urban500m_median+
@@ -1020,13 +1020,9 @@ m.psi.myse.global<-colext(
 summary(m.psi.myse.global)
 
 #Dredge for best models 
-
-
-
-
 print(
   system.time(
-    pesu.d<-dredge(m.psi.pesu.global,rank = "QAIC", chat = 2.23,trace =2,m.lim =c(0,5), fixed =c("psi(Int)","p(tavg)","p(water)"),
+    pesu.d<-dredge(m.psi.pesu.global,rank = "QAIC", chat = 2.23,trace =TRUE,m.lim =c(0,5), fixed =c("psi(Int)","p(tavg)","p(water)"),
                     subset = !("psi(sc.canopy500m_mean)"&&"psi(sc.canopy500m_median)"| 
                                  "psi(sc.canopy500m_mean)"&&"psi(sc.canopy1km_mean)"| 
                                  "psi(sc.canopy500m_mean)"&&"psi(sc.canopy1km_median)"| 
@@ -1086,7 +1082,7 @@ print(
                            ))))
 
 
-
+beep(4)
 
 print(
 system.time(
@@ -1212,6 +1208,8 @@ myse.d<-dredge(m.psi.myse.global,rank = "QAIC", trace = 2,m.lim =c(0,4), chat = 
                             "psi(sc.urban5km_mean)"&&"psi(sc.urban5km_median)"
                ))))
 
+library(beepr)
+beep(sound="mario")
 
 
 #write the model selection tables to .csv files 
@@ -1225,8 +1223,47 @@ setwd("~/github/MYSE_21")
 
 #top model from dredge
 #PESU
-m.pesu.td<-colext(psiformula = ~sc.urban5km_median, gammaformula = ~1, epsilonformula = ~1, pformula = ~water + tavg, data=pesu_umf)
+
+attr(pesu.d,"model.calls")[[1]]
+
+m.pesu.td<-
+  colext(
+    psiformula = ~ sc.canopy + sc.canopy5km_median + sc.urban5km_median,
+    gammaformula = ~ 1,
+    epsilonformula = ~ 1,
+    pformula = ~ 1 + tavg + water,
+    data = pesu_umf
+  )
 summary(m.pesu.td)
+
+
 
 #EPFU
 
+attr(epfu.d,"model.calls")[[1]]
+
+m.epfu.td<-
+  colext(
+    psiformula = ~ sc.canopy2500m_mean + sc.urban5km_median,
+    gammaformula = ~ 1,
+    epsilonformula = ~ 1,
+    pformula = ~ j_date + canopy,
+    data = epfu_umf
+  )
+
+summary(m.epfu.td)
+
+#myse
+
+attr(myse.d,"model.calls")[[1]]
+
+m.myse.td<-
+  colext(
+    psiformula = ~ sc.canopy5km_mean + sc.urban5km_median + sc.water,
+    gammaformula = ~ 1,
+    epsilonformula = ~ 1,
+    pformula = ~ canopy,
+    data = myse_umf
+  )
+
+summary(m.myse.td)
