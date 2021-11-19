@@ -114,7 +114,7 @@ summary(m.pesu.global)
 #system.time(pesu.gof<-mb.gof.test(m.pesu.global,nsim = 1000))
 #pesu.gof#c-hat 2.23
 
-### Single covarites
+### Single covariates 
 
 #null 
 m.pesu.null<-colext(psiformula = ~1, gammaformula = ~1, epsilonformula = ~1, pformula = ~1, data=pesu_umf)
@@ -976,6 +976,7 @@ cat(paste("",ur$X1,ur$and,ur$X2,ur$or,sep = '"'))
 
 
 
+
 #make the global models
 m.psi.pesu.global<-colext(
                       psiformula = ~sc.structure+sc.canopy+sc.elev+sc.impervious+
@@ -991,6 +992,8 @@ m.psi.pesu.global<-colext(
                       data=pesu_umf)
 summary(m.psi.pesu.global)
 
+
+vif(m.psi.pesu.global,"state")
 
 m.psi.epfu.global<-colext(
                       psiformula = ~sc.structure+sc.water+sc.elev+sc.impervious+
@@ -1228,13 +1231,17 @@ attr(pesu.d,"model.calls")[[1]]
 
 m.pesu.td<-
   colext(
-    psiformula = ~ sc.canopy + sc.canopy5km_median + sc.urban5km_median,
+    psiformula = ~ sc.canopy +  sc.urban5km_median,
     gammaformula = ~ 1,
     epsilonformula = ~ 1,
     pformula = ~ 1 + tavg + water,
     data = pesu_umf
   )
 summary(m.pesu.td)
+
+vif(m.pesu.td,"psi")#crazy VIF scores
+
+
 
 
 

@@ -35,8 +35,19 @@ cu<-plyr::rename(cu,c("site"="site_code" ))
 
 sc<-merge(sc,cu,by=c("site_code"),all.x = TRUE)
 
+
+
 #sc<-s21[,-c(1,6:7)]#drop vars not needed by col number
 
+#change to numeric 
+
+
+sc$urban5km_mean<-as.numeric(sc$urban5km_mean)
+
+sc[121,18]<-0.11078200
+
+sc%>%
+  filter(is.na(urban5km_mean))
 
 #Add distance to nearest site (n.distance(m),n.distance_km(km)), site_ID of nearest site(neighbor),
 #number of sites within a 1.5k radius (radius1500), and 
@@ -74,17 +85,54 @@ rownames(sc2) <- seq(nrow(sc2))
 
 sc3<-sc2[,c(1:28,55,56)]
 
+
+sc%>%
+  filter(is.na(urban5km_mean))#4 NAs
+
 #add km col for quick look
 
 sc3$n.distance_km<-sc3$n.distance/1000
 
+#add WNS data and landform data
+
+lwns <- read_excel("data/landform and wns.xlsx")
+lwns<-plyr::rename(lwns,c("site"="site_code" ))
+
+sc3<-merge(sc3,lwns,by=c("site_code"),all.x = TRUE)
+
+#change landform to a factor 
+# 
+# library(stringr)
+# sc3<-
+#   sc3%>%
+#   mutate_if(stringr::str_detect(names(.),"landform"),as.factor)
+# 
+
 sc<-sc3
 
-ggplot(sc,aes(scale(urban5km_mean),scale(canopy5km_mean)))+
-  geom_point()
+#yearly site covarites 
+library(readr)
+year_tmax_NClimGrid <- read_csv("data/year_tmax_NClimGrid.csv")
+year_tavg_NClimGrid <- read_csv("data/year_tavg_NClimGrid.csv")
+year_precip_NClimGrid <- read_csv("data/year_precip_NClimGrid.csv")
+year_precip_cmap <- read_csv("data/year_precip_cmap.csv")
+year_air_T_GHCN <- read_csv("data/year_air_T_GHCN.csv")
 
-ggplot(sc,aes(scale(urban5km_median),scale(canopy5km_median)))+
-  geom_point()
+ysc_list<-list(year_air_T_GHCN,year_precip_cmap,year_precip_NClimGrid,year_tavg_NClimGrid,year_tmax_NClimGrid)
+
+
+names(ysc_list)<-c("year_air_T_GHCN",
+            "year_precip_cmap",
+            "year_tavg_NClimGrid",
+            "year_precip_NClimGrid",
+            "year_tmax_NClimGrid")
+
+ysc_l<-bind_cols(ysc_list,.id = "column_label",.name_repair = "unique")
+
+test<-
+ysc_l%>%
+  pivot_wider(names_from = column_label,values_from = c("2015":"2021"),names_glue = "{column_label}_{.value}")
+
 
 # PESU detection models ---------------------------------------------------
 
@@ -113,8 +161,8 @@ pesu_umf <- unmarkedMultFrame(y=as.data.frame(pesu[,c(2:29)]),
                                 tree_canopy=as.data.frame(pesu[,c(338:365)]),
                                 dis_2_clutter=as.data.frame(pesu[,c(366:393)])
                               ),
-                              #yearlySiteCovs=list(
-                              # year=as.data.frame(pesu[,c(170:197)])),
+                              yearlySiteCovs=list(
+                              year_air_T_GHCN=year_air_T_GHCN[,c(2:8)]),
                               numPrimary=7)
 plot(pesu_umf)
 summary(pesu_umf)
@@ -122,8 +170,10 @@ summary(pesu_umf)
 
 #subset out doubled sites
 
-pesu_umf<-pesu_umf[which(siteCovs(pesu_umf)$sc.site_code!="C108-S7"&siteCovs(pesu_umf)$sc.site_code!="C81-S4"),]
+pesu_umf<-pesu_umf[which(siteCovs(pesu_umf)$sc.site_code!="C108-S7" & siteCovs(pesu_umf)$sc.site_code!="C81-S4"),]
 summary(pesu_umf)
+
+
 
 #scale numeric obs covs
 pesu_umf@obsCovs<-
@@ -146,7 +196,7 @@ levels(pesu_umf@siteCovs$sc.canopy)<-c("closed","half","open")
 unique(pesu_umf@obsCovs$canopy)
 unique(pesu_umf@siteCovs$sc.canopy)
 
-
+summary(pesu_umf)
 
 
 #global model for c-hat
@@ -1329,7 +1379,6 @@ library(MuMIn)
 # PSI PESU models --------------------------------------------------------------
 
 
-
 #site scale 
 
 names(pesu_umf@siteCovs)
@@ -1342,6 +1391,15 @@ colext(
   pformula = ~tavg + water,
   data = pesu_umf
 )
+
+psi.pesu.wns<-
+  colext(
+    psiformula = ~sc.WNS_2,
+    gammaformula = ~ 1,
+    epsilonformula = ~ 1,
+    pformula = ~tavg + water,
+    data = pesu_umf
+  )
 
 psi.pesu.structure<-
 colext(
@@ -1388,14 +1446,70 @@ colext(
   data = pesu_umf
 )
 
-psi.pesu.tree_canopy<-
+#WNS
+
+psi.pesu.structure_WNS<-
+  colext(
+    psiformula = ~sc.structure + sc.WNS_2,
+    gammaformula = ~ 1,
+    epsilonformula = ~ 1,
+    pformula = ~  tavg + water,
+    data = pesu_umf
+  )
+
+psi.pesu.canopy_WNS<-
+  colext(
+    psiformula = ~sc.canopy+ sc.WNS_2,
+    gammaformula = ~ 1,
+    epsilonformula = ~ 1,
+    pformula = ~  tavg + water,
+    data = pesu_umf
+  )
+
+psi.pesu.water_WNS<-
+  colext(
+    psiformula = ~ sc.water+ sc.WNS_2,
+    gammaformula = ~ 1,
+    epsilonformula = ~ 1,
+    pformula = ~  tavg + water,
+    data = pesu_umf
+  )
+
+psi.pesu.elev_WNS<-
+  colext(
+    psiformula = ~sc.elev+ sc.WNS_2,
+    gammaformula = ~ 1,
+    epsilonformula = ~ 1,
+    pformula = ~  tavg + water,
+    data = pesu_umf
+  )
+
+psi.pesu.impervious_WNS<-
+  colext(
+    psiformula = ~sc.impervious+ sc.WNS_2,
+    gammaformula = ~ 1,
+    epsilonformula = ~ 1,
+    pformula = ~ tavg + water,
+    data = pesu_umf
+  )
+
+psi.pesu.tree_canopy_WNS<-
 colext(
-  psiformula = ~sc.tree_canopy,
+  psiformula = ~sc.tree_canopy+ sc.WNS_2,
   gammaformula = ~ 1,
   epsilonformula = ~ 1,
   pformula = ~  tavg + water,
   data = pesu_umf
 )
+
+psi.pesu.tree_canopy<-
+  colext(
+    psiformula = ~sc.tree_canopy,
+    gammaformula = ~ 1,
+    epsilonformula = ~ 1,
+    pformula = ~  tavg + water,
+    data = pesu_umf
+  )
 
 psi.pesu.tree_canopy2<-
   colext(
@@ -1522,6 +1636,7 @@ psi.pesu.water_tree_canopy<-
 
 #site level model selection 
 psi.pesu.models<-list("psi(.)gam(.)eps(.)p(average temp + water)"=psi.pesu.null,#
+                    "psi(WNS)gam(.)eps(.)p(average temp + water)"=psi.pesu.wns,#
                     "psi(tree_canopy)gam(.)eps(.)p(average temp + water)"=psi.pesu.tree_canopy,#
                     "psi(tree_canopy2)gam(.)eps(.)p(average temp + water)"=psi.pesu.tree_canopy2,#
                     "psi(tree_canopy3)gam(.)eps(.)p(average temp + water)"=psi.pesu.tree_canopy3,#
@@ -1533,6 +1648,12 @@ psi.pesu.models<-list("psi(.)gam(.)eps(.)p(average temp + water)"=psi.pesu.null,
                     "psi(dist to clutter)gam(.)eps(.)p(average temp + water)"=psi.pesu.dis_2_clutter,#
                     "psi(dist to clutter2)gam(.)eps(.)p(average temp + water)"=psi.pesu.dis_2_clutter2,#
                     "psi(dist to clutter3)gam(.)eps(.)p(average temp + water)"=psi.pesu.dis_2_clutter3,#
+                    "psi(elev + WNS)gam(.)eps(.)p(average temp + water)"=psi.pesu.elev_WNS,
+                    "psi(canopy + WNS)gam(.)eps(.)p(average temp + water)"=psi.pesu.canopy_WNS,
+                    "psi(tree_canopy + WNS)gam(.)eps(.)p(average temp + water)"=psi.pesu.tree_canopy_WNS,
+                    "psi(structure + WNS)gam(.)eps(.)p(average temp + water)"=psi.pesu.structure_WNS,
+                    "psi(impervious + WNS)gam(.)eps(.)p(average temp + water)"=psi.pesu.impervious_WNS,
+                    "psi(Water + WNS)gam(.)eps(.)p(average temp + water)"=psi.pesu.water_WNS,#
                     "psi(elev + canopy)gam(.)eps(.)p(average temp + water)"=psi.pesu.elev_canopy,#
                     "psi(elev * canopy)gam(.)eps(.)p(average temp + water)"=psi.pesu.elev.canopy,#
                     "psi(elev + tree_canopy)gam(.)eps(.)p(average temp + water)"=psi.pesu.elev.tree_canopy,
@@ -1548,6 +1669,17 @@ aictab(cand.set=psi.pesu.models,second.ord = FALSE, c.hat=2.23)
 
 
 #500m scale 
+
+
+psi.pesu.landform500m<-
+  colext(
+    psiformula = ~ sc.landform_500m,
+    gammaformula = ~ 1,
+    epsilonformula = ~ 1,
+    pformula = ~tavg + water,
+    data = pesu_umf
+  )
+
 
 psi.pesu.urban500m_mean<-
   colext(
@@ -1588,6 +1720,7 @@ psi.pesu.canopy500m_median<-
 
 #500m level model selection 
 psi.pesu.500m.models<-list("psi(.)gam(.)eps(.)p(average temp + water)"=psi.pesu.null,#
+                      "psi(landform 0.5k)gam(.)eps(.)p(average temp + water)"=psi.pesu.landform500m,#
                       "psi(Urban 0.5k mean)gam(.)eps(.)p(average temp + water)"=psi.pesu.urban500m_mean,#
                       "psi(Urban 0.5k median)gam(.)eps(.)p(average temp + water)"=psi.pesu.urban500m_median,#
                       "psi(Canopy 0.5k mean)gam(.)eps(.)p(average temp + water)"=psi.pesu.canopy500m_mean,#
@@ -1600,6 +1733,17 @@ aictab(cand.set=psi.pesu.500m.models,second.ord = FALSE, c.hat=2.23)
 
 
 #1km scale
+
+psi.pesu.landform1k<-
+  colext(
+    psiformula = ~ sc.landform_1km,
+    gammaformula = ~ 1,
+    epsilonformula = ~ 1,
+    pformula = ~tavg + water,
+    data = pesu_umf
+  )
+
+
 
 psi.pesu.urban1km_mean<-
   colext(
@@ -1639,6 +1783,7 @@ psi.pesu.canopy1km_median<-
 
 #1km level model selection 
 psi.pesu.1km.models<-list("psi(.)gam(.)eps(.)p(average temp + water)"=psi.pesu.null,#
+                          "psi(landform 1km)gam(.)eps(.)p(average temp + water)"=psi.pesu.landform1k,#
                            "psi(Urban 1km mean)gam(.)eps(.)p(average temp + water)"=psi.pesu.urban1km_mean,#
                            "psi(Urban 1km median)gam(.)eps(.)p(average temp + water)"=psi.pesu.urban1km_median,#
                            "psi(Canopy 1km mean)gam(.)eps(.)p(average temp + water)"=psi.pesu.canopy1km_mean,#
@@ -1651,6 +1796,16 @@ aictab(cand.set=psi.pesu.1km.models,second.ord = FALSE, c.hat=2.23)
 
 
 #2.5km scale 
+
+psi.pesu.landform2.5k<-
+  colext(
+    psiformula = ~ sc.landform_2500m,
+    gammaformula = ~ 1,
+    epsilonformula = ~ 1,
+    pformula = ~tavg + water,
+    data = pesu_umf
+  )
+
 psi.pesu.urban2500m_mean<-
   colext(
     psiformula = ~ sc.urban2500m_mean,
@@ -1689,6 +1844,7 @@ psi.pesu.canopy2500m_median<-
 
 #2500m level model selection 
 psi.pesu.2500m.models<-list("psi(.)gam(.)eps(.)p(average temp + water)"=psi.pesu.null,#
+                          "psi(landform 2500m)gam(.)eps(.)p(average temp + water)"=psi.pesu.landform2.5k,#
                           "psi(Urban 2500m mean)gam(.)eps(.)p(average temp + water)"=psi.pesu.urban2500m_mean,#
                           "psi(Urban 2500m median)gam(.)eps(.)p(average temp + water)"=psi.pesu.urban2500m_median,#
                           "psi(Canopy 2500m mean)gam(.)eps(.)p(average temp + water)"=psi.pesu.canopy2500m_mean,#
@@ -1699,8 +1855,31 @@ psi.pesu.2500m.models<-list("psi(.)gam(.)eps(.)p(average temp + water)"=psi.pesu
 aictab(cand.set=psi.pesu.2500m.models,second.ord = FALSE, c.hat=2.23)
 
 
+#test without outlier site (change umf dataframe to pesu_umf_out)
+
+# pesu_umf_out<-pesu_umf[which(siteCovs(pesu_umf)$sc.site_code!="C66-S1"),]
+# summary(pesu_umf)
+
+
+sc%>%
+  filter(is.na(urban5km_mean))
+
+
+
+summary(pesu_umf@siteCovs)
 
 #5km scale 
+
+psi.pesu.landform5k<-
+  colext(
+    psiformula = ~ sc.landform_5km,
+    gammaformula = ~ 1,
+    epsilonformula = ~ 1,
+    pformula = ~tavg + water,
+    data = pesu_umf
+  )
+
+
 psi.pesu.urban5km_mean<-
   colext(
     psiformula = ~ sc.urban5km_mean,
@@ -1722,6 +1901,15 @@ psi.pesu.urban5km_median<-
 psi.pesu.canopy5km_mean<-
   colext(
     psiformula = ~ sc.canopy5km_mean,
+    gammaformula = ~ 1,
+    epsilonformula = ~ 1,
+    pformula = ~tavg + water,
+    data = pesu_umf
+  )
+
+psi.pesu.canopy5km_mean_lf<-
+  colext(
+    psiformula = ~ sc.canopy5km_mean+sc.landform_5km,
     gammaformula = ~ 1,
     epsilonformula = ~ 1,
     pformula = ~tavg + water,
@@ -1760,15 +1948,17 @@ psi.pesu.urban5km_mean2<-
 
 #5km level model selection 
 psi.pesu.5km.models<-list("psi(.)gam(.)eps(.)p(average temp + water)"=psi.pesu.null,#
+                            "psi(landform 5km)gam(.)eps(.)p(average temp + water)"=psi.pesu.landform5k,#
                             "psi(Urban 5km mean)gam(.)eps(.)p(average temp + water)"=psi.pesu.urban5km_mean,#
                             "psi(Urban 5km mean2)gam(.)eps(.)p(average temp + water)"=psi.pesu.urban5km_mean2,#
                             "psi(Urban 5km median)gam(.)eps(.)p(average temp + water)"=psi.pesu.urban5km_median,#
                             "psi(Canopy 5km mean)gam(.)eps(.)p(average temp + water)"=psi.pesu.canopy5km_mean,#
+                            "psi(Canopy 5km mean + landform 5km)gam(.)eps(.)p(average temp + water)"=psi.pesu.canopy5km_mean_lf,#
                             "psi(Canopy 5km mean2)gam(.)eps(.)p(average temp + water)"=psi.pesu.canopy5km_mean2,#
                             "psi(Canopy 5km median)gam(.)eps(.)p(average temp + water)"=psi.pesu.canopy5km_median
 )
 
-#Urban better than null
+#Nothing better than null
 aictab(cand.set=psi.pesu.5km.models,second.ord = FALSE, c.hat=2.23)
 
 
@@ -1780,20 +1970,15 @@ summary(psi.pesu.urban5km_mean2)#SE 3 times estimate
 
 #look at plot of urban 5k 
 library(GGally)
-
-excluded_vars <- c("id","Latitude","Longitude")
-
-pp<-
-sc3%>%
-  select_if(is.numeric)%>%
-  select(-one_of(excluded_vars))
-
 library(stringr)
 p5k<-
   sc3%>%
   select_if(stringr::str_detect(names(.),"5km"))
 
-ggpairs(p5k)+
-  theme_linedraw()#
+
+ggpairs(p5k)#quick scatter plot
+
+
+
 
 
