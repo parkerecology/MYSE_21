@@ -141,6 +141,49 @@ names(obs)
 pesu<-obs[,c(1,394:421,450:813)]
 names(pesu)
 
+#import yearly site covs 
+
+#monthly average of max temps daymet 
+
+#yearly mean of max temps
+tmax_year_mean_w <- read_csv("data/Daymet vars/tmax_year_mean_w.csv", 
+                             col_types = cols(tmax_year_2021 = col_double()))
+
+# mean of summer monthly average max temps (6,7,8)
+tmax_sumr_mean_w <- read_csv("data/Daymet vars/tmax_sumr_mean_w.csv", 
+                             col_types = cols(tmax_sumr_2021 = col_double()))
+
+#max temps August
+tmax_08 <- read_csv("data/Daymet vars/tmax_08.csv", 
+                    col_types = cols(tmax_2021.08 = col_double()))
+
+#monthly average of minimum temps 
+
+#yearly mean of monthly min temps 
+tmin_year_mean_w <- read_csv("data/Daymet vars/tmin_year_mean_w.csv", 
+                             col_types = cols(tmin_year_2021 = col_double()))
+
+# mean of winter monthly average min temps (12,1,2)
+tmin_wint_mean_w <- read_csv("data/Daymet vars/tmin_wint_mean_w.csv", 
+                             col_types = cols(tmin_wint_2021 = col_double()))
+
+#average monthly min temp jan
+tmin_jan_w <- read_csv("data/Daymet vars/tmin_jan_w.csv", 
+                       col_types = cols(tmin_jan_2021 = col_double()))
+
+
+
+#merge to ensure site codes and order are the same 
+
+#max temps 
+tmax_year_mean_m<-merge(sc,tmax_year_mean_w,by=c("site_code"))
+tmax_sumr_mean_m<-merge(sc,tmax_sumr_mean_w,by=c("site_code"))
+tmax_08_m<-merge(sc,tmax_08,by=c("site_code"))
+
+#min temps 
+tmin_year_mean_m<-merge(sc,tmin_year_mean_w,by=c("site_code"))
+tmin_wint_mean_m<-merge(sc,tmin_wint_mean_w ,by=c("site_code"))
+tmin_jan_m<-merge(sc,tmin_jan_w,by=c("site_code"))
 
 #make unmarked dataframe
 library(unmarked)
@@ -162,7 +205,13 @@ pesu_umf <- unmarkedMultFrame(y=as.data.frame(pesu[,c(2:29)]),
                                 dis_2_clutter=as.data.frame(pesu[,c(366:393)])
                               ),
                               yearlySiteCovs=list(
-                              year_air_T_GHCN=year_air_T_GHCN[,c(2:8)]),
+                              tmax_year_mean=tmax_year_mean_m[,c(37:43)],
+                              tmax_sumr_mean=tmax_sumr_mean_m[,c(37:43)],
+                              tmax_08=tmax_08_m[,c(37:43)],
+                              tmin_jan=tmin_jan_m[,c(37:43)],
+                              tmin_wint_mean=tmin_wint_mean_m[,c(37:43)],
+                              tmin_year_mean=tmin_year_mean_m[,c(37:43)]
+                              ),
                               numPrimary=7)
 plot(pesu_umf)
 summary(pesu_umf)
@@ -1977,6 +2026,1351 @@ p5k<-
 
 
 ggpairs(p5k)#quick scatter plot
+
+
+
+
+
+
+# EPFU PSI models ---------------------------------------------------------
+
+
+#site scale 
+
+names(epfu_umf@siteCovs)
+
+psi.epfu.null<-
+  colext(
+    psiformula = ~1,
+    gammaformula = ~ 1,
+    epsilonformula = ~ 1,
+    pformula = ~canopy + j_date,
+    data = epfu_umf
+  )
+
+psi.epfu.wns<-
+  colext(
+    psiformula = ~sc.WNS_2,
+    gammaformula = ~ 1,
+    epsilonformula = ~ 1,
+    pformula = ~canopy + j_date,
+    data = epfu_umf
+  )
+
+psi.epfu.structure<-
+  colext(
+    psiformula = ~sc.structure,
+    gammaformula = ~ 1,
+    epsilonformula = ~ 1,
+    pformula = ~  canopy + j_date,
+    data = epfu_umf
+  )
+
+psi.epfu.canopy<-
+  colext(
+    psiformula = ~sc.canopy,
+    gammaformula = ~ 1,
+    epsilonformula = ~ 1,
+    pformula = ~  canopy + j_date,
+    data = epfu_umf
+  )
+
+psi.epfu.water<-
+  colext(
+    psiformula = ~ sc.water,
+    gammaformula = ~ 1,
+    epsilonformula = ~ 1,
+    pformula = ~  canopy + j_date,
+    data = epfu_umf
+  )
+
+psi.epfu.elev<-
+  colext(
+    psiformula = ~sc.elev,
+    gammaformula = ~ 1,
+    epsilonformula = ~ 1,
+    pformula = ~  canopy + j_date,
+    data = epfu_umf
+  )
+
+psi.epfu.impervious<-
+  colext(
+    psiformula = ~sc.impervious,
+    gammaformula = ~ 1,
+    epsilonformula = ~ 1,
+    pformula = ~ canopy + j_date,
+    data = epfu_umf
+  )
+
+#WNS
+
+psi.epfu.structure_WNS<-
+  colext(
+    psiformula = ~sc.structure + sc.WNS_2,
+    gammaformula = ~ 1,
+    epsilonformula = ~ 1,
+    pformula = ~  canopy + j_date,
+    data = epfu_umf
+  )
+
+psi.epfu.canopy_WNS<-
+  colext(
+    psiformula = ~sc.canopy+ sc.WNS_2,
+    gammaformula = ~ 1,
+    epsilonformula = ~ 1,
+    pformula = ~  canopy + j_date,
+    data = epfu_umf
+  )
+
+psi.epfu.water_WNS<-
+  colext(
+    psiformula = ~ sc.water+ sc.WNS_2,
+    gammaformula = ~ 1,
+    epsilonformula = ~ 1,
+    pformula = ~  canopy + j_date,
+    data = epfu_umf
+  )
+
+psi.epfu.elev_WNS<-
+  colext(
+    psiformula = ~sc.elev+ sc.WNS_2,
+    gammaformula = ~ 1,
+    epsilonformula = ~ 1,
+    pformula = ~  canopy + j_date,
+    data = epfu_umf
+  )
+
+psi.epfu.impervious_WNS<-
+  colext(
+    psiformula = ~sc.impervious+ sc.WNS_2,
+    gammaformula = ~ 1,
+    epsilonformula = ~ 1,
+    pformula = ~ canopy + j_date,
+    data = epfu_umf
+  )
+
+psi.epfu.tree_canopy_WNS<-
+  colext(
+    psiformula = ~sc.tree_canopy+ sc.WNS_2,
+    gammaformula = ~ 1,
+    epsilonformula = ~ 1,
+    pformula = ~  canopy + j_date,
+    data = epfu_umf
+  )
+
+psi.epfu.tree_canopy<-
+  colext(
+    psiformula = ~sc.tree_canopy,
+    gammaformula = ~ 1,
+    epsilonformula = ~ 1,
+    pformula = ~  canopy + j_date,
+    data = epfu_umf
+  )
+
+psi.epfu.tree_canopy2<-
+  colext(
+    psiformula = ~sc.tree_canopy+I(sc.tree_canopy^2),
+    gammaformula = ~ 1,
+    epsilonformula = ~ 1,
+    pformula = ~  canopy + j_date,
+    data = epfu_umf
+  )
+
+
+psi.epfu.tree_canopy3<-
+  colext(
+    psiformula = ~sc.tree_canopy+I(sc.tree_canopy^2)+I(sc.tree_canopy^3),
+    gammaformula = ~ 1,
+    epsilonformula = ~ 1,
+    pformula = ~  canopy + j_date,
+    data = epfu_umf
+  )
+
+psi.epfu.dis_2_clutter<-
+  colext(
+    psiformula = ~ sc.dis_2_clutter,
+    gammaformula = ~ 1,
+    epsilonformula = ~ 1,
+    pformula = ~  canopy + j_date,
+    data = epfu_umf
+  )
+
+psi.epfu.dis_2_clutter2<-
+  colext(
+    psiformula = ~ sc.dis_2_clutter+I(sc.dis_2_clutter^2),
+    gammaformula = ~ 1,
+    epsilonformula = ~ 1,
+    pformula = ~  canopy + j_date,
+    data = epfu_umf
+  )
+
+psi.epfu.dis_2_clutter3<-
+  colext(
+    psiformula = ~ sc.dis_2_clutter+I(sc.dis_2_clutter^2)+I(sc.dis_2_clutter^3),
+    gammaformula = ~ 1,
+    epsilonformula = ~ 1,
+    pformula = ~  canopy + j_date,
+    data = epfu_umf
+  )
+
+psi.epfu.elev2<-
+  colext(
+    psiformula = ~sc.elev+I(sc.elev^2),
+    gammaformula = ~ 1,
+    epsilonformula = ~ 1,
+    pformula = ~  canopy + j_date,
+    data = epfu_umf
+  )
+
+psi.epfu.elev_canopy<-
+  colext(
+    psiformula = ~sc.elev+sc.canopy,
+    gammaformula = ~ 1,
+    epsilonformula = ~ 1,
+    pformula = ~  canopy + j_date,
+    data = epfu_umf
+  )
+
+
+psi.epfu.elev.canopy<-
+  colext(
+    psiformula = ~sc.elev*sc.canopy,
+    gammaformula = ~ 1,
+    epsilonformula = ~ 1,
+    pformula = ~  canopy + j_date,
+    data = epfu_umf
+  )
+
+psi.epfu.elev_tree_canopy<-
+  colext(
+    psiformula = ~sc.elev+sc.tree_canopy,
+    gammaformula = ~ 1,
+    epsilonformula = ~ 1,
+    pformula = ~  canopy + j_date,
+    data = epfu_umf
+  )
+
+
+psi.epfu.elev.tree_canopy<-
+  colext(
+    psiformula = ~sc.elev*sc.tree_canopy,
+    gammaformula = ~ 1,
+    epsilonformula = ~ 1,
+    pformula = ~  canopy + j_date,
+    data = epfu_umf
+  )
+
+
+psi.epfu.elev_impervious<-
+  colext(
+    psiformula = ~sc.elev+sc.impervious,
+    gammaformula = ~ 1,
+    epsilonformula = ~ 1,
+    pformula = ~  canopy + j_date,
+    data = epfu_umf
+  )
+
+psi.epfu.elev_water<-
+  colext(
+    psiformula = ~sc.elev+sc.water,
+    gammaformula = ~ 1,
+    epsilonformula = ~ 1,
+    pformula = ~  canopy + j_date,
+    data = epfu_umf
+  )
+
+
+psi.epfu.water_tree_canopy<-
+  colext(
+    psiformula = ~sc.water+sc.tree_canopy,
+    gammaformula = ~ 1,
+    epsilonformula = ~ 1,
+    pformula = ~  canopy + j_date,
+    data = epfu_umf
+  )
+
+
+#site level model selection 
+psi.epfu.models<-list("psi(.)gam(.)eps(.)p(canopy + j_date)"=psi.epfu.null,#
+                      "psi(WNS)gam(.)eps(.)p(canopy + j_date)"=psi.epfu.wns,#
+                      "psi(tree_canopy)gam(.)eps(.)p(canopy + j_date)"=psi.epfu.tree_canopy,#
+                      "psi(tree_canopy2)gam(.)eps(.)p(canopy + j_date)"=psi.epfu.tree_canopy2,#
+                      "psi(tree_canopy3)gam(.)eps(.)p(canopy + j_date)"=psi.epfu.tree_canopy3,#
+                      "psi(elev)gam(.)eps(.)p(canopy + j_date)"=psi.epfu.elev,#
+                      "psi(elev2)gam(.)eps(.)p(canopy + j_date)"=psi.epfu.elev2,#
+                      "psi(water)gam(.)eps(.)p(canopy + j_date)"=psi.epfu.water,#
+                      "psi(canopy)gam(.)eps(.)p(canopy + j_date)"=psi.epfu.canopy,#
+                      "psi(structure)gam(.)eps(.)p(canopy + j_date)"=psi.epfu.structure,#
+                      "psi(dist to clutter)gam(.)eps(.)p(canopy + j_date)"=psi.epfu.dis_2_clutter,#
+                      "psi(dist to clutter2)gam(.)eps(.)p(canopy + j_date)"=psi.epfu.dis_2_clutter2,#
+                      "psi(dist to clutter3)gam(.)eps(.)p(canopy + j_date)"=psi.epfu.dis_2_clutter3,#
+                      "psi(elev + WNS)gam(.)eps(.)p(canopy + j_date)"=psi.epfu.elev_WNS,
+                      "psi(canopy + WNS)gam(.)eps(.)p(canopy + j_date)"=psi.epfu.canopy_WNS,
+                      "psi(tree_canopy + WNS)gam(.)eps(.)p(canopy + j_date)"=psi.epfu.tree_canopy_WNS,
+                      "psi(structure + WNS)gam(.)eps(.)p(canopy + j_date)"=psi.epfu.structure_WNS,
+                      "psi(impervious + WNS)gam(.)eps(.)p(canopy + j_date)"=psi.epfu.impervious_WNS,
+                      "psi(Water + WNS)gam(.)eps(.)p(canopy + j_date)"=psi.epfu.water_WNS,#
+                      "psi(elev + canopy)gam(.)eps(.)p(canopy + j_date)"=psi.epfu.elev_canopy,#
+                      "psi(elev * canopy)gam(.)eps(.)p(canopy + j_date)"=psi.epfu.elev.canopy,#
+                      "psi(elev + tree_canopy)gam(.)eps(.)p(canopy + j_date)"=psi.epfu.elev.tree_canopy,
+                      "psi(elev + impervious)gam(.)eps(.)p(canopy + j_date)"=psi.epfu.elev_impervious,#
+                      "psi(elev + water)gam(.)eps(.)p(canopy + j_date)"=psi.epfu.elev_water,#
+                      "psi(elev + tree_canopy)gam(.)eps(.)p(canopy + j_date)"=psi.epfu.elev_tree_canopy,#
+                      "psi(water + tree canopy)gam(.)eps(.)p(canopy + j_date)"=psi.epfu.water_tree_canopy#
+)
+
+#nothing better than the null 
+aictab(cand.set=psi.epfu.models,second.ord = FALSE, c.hat=2.61)
+
+
+
+#500m scale 
+
+
+psi.epfu.landform500m<-
+  colext(
+    psiformula = ~ sc.landform_500m,
+    gammaformula = ~ 1,
+    epsilonformula = ~ 1,
+    pformula = ~canopy + j_date,
+    data = epfu_umf
+  )
+
+
+psi.epfu.urban500m_mean<-
+  colext(
+    psiformula = ~ sc.urban500m_mean,
+    gammaformula = ~ 1,
+    epsilonformula = ~ 1,
+    pformula = ~canopy + j_date,
+    data = epfu_umf
+  )
+
+psi.epfu.urban500m_median<-
+  colext(
+    psiformula = ~ sc.urban500m_median,
+    gammaformula = ~ 1,
+    epsilonformula = ~ 1,
+    pformula = ~canopy + j_date,
+    data = epfu_umf
+  )
+
+psi.epfu.canopy500m_mean<-
+  colext(
+    psiformula = ~ sc.canopy500m_mean,
+    gammaformula = ~ 1,
+    epsilonformula = ~ 1,
+    pformula = ~canopy + j_date,
+    data = epfu_umf
+  )
+
+psi.epfu.canopy500m_median<-
+  colext(
+    psiformula = ~ sc.canopy500m_median,
+    gammaformula = ~ 1,
+    epsilonformula = ~ 1,
+    pformula = ~canopy + j_date,
+    data = epfu_umf
+  )
+
+
+#500m level model selection 
+psi.epfu.500m.models<-list("psi(.)gam(.)eps(.)p(canopy + j_date)"=psi.epfu.null,#
+                           "psi(landform 0.5k)gam(.)eps(.)p(canopy + j_date)"=psi.epfu.landform500m,#
+                           "psi(Urban 0.5k mean)gam(.)eps(.)p(canopy + j_date)"=psi.epfu.urban500m_mean,#
+                           "psi(Urban 0.5k median)gam(.)eps(.)p(canopy + j_date)"=psi.epfu.urban500m_median,#
+                           "psi(Canopy 0.5k mean)gam(.)eps(.)p(canopy + j_date)"=psi.epfu.canopy500m_mean,#
+                           "psi(Canopy 0.5k median)gam(.)eps(.)p(canopy + j_date)"=psi.epfu.canopy500m_median
+)
+
+#nothing better than the null 
+aictab(cand.set=psi.epfu.500m.models,second.ord = FALSE, c.hat=2.61)
+
+
+
+#1km scale
+
+psi.epfu.landform1k<-
+  colext(
+    psiformula = ~ sc.landform_1km,
+    gammaformula = ~ 1,
+    epsilonformula = ~ 1,
+    pformula = ~canopy + j_date,
+    data = epfu_umf
+  )
+
+
+
+psi.epfu.urban1km_mean<-
+  colext(
+    psiformula = ~ sc.urban1km_mean,
+    gammaformula = ~ 1,
+    epsilonformula = ~ 1,
+    pformula = ~canopy + j_date,
+    data = epfu_umf
+  )
+
+psi.epfu.urban1km_median<-
+  colext(
+    psiformula = ~ sc.urban1km_median,
+    gammaformula = ~ 1,
+    epsilonformula = ~ 1,
+    pformula = ~canopy + j_date,
+    data = epfu_umf
+  )
+
+psi.epfu.canopy1km_mean<-
+  colext(
+    psiformula = ~ sc.canopy1km_mean,
+    gammaformula = ~ 1,
+    epsilonformula = ~ 1,
+    pformula = ~canopy + j_date,
+    data = epfu_umf
+  )
+
+psi.epfu.canopy1km_median<-
+  colext(
+    psiformula = ~ sc.canopy1km_median,
+    gammaformula = ~ 1,
+    epsilonformula = ~ 1,
+    pformula = ~canopy + j_date,
+    data = epfu_umf
+  )
+
+#1km level model selection 
+psi.epfu.1km.models<-list("psi(.)gam(.)eps(.)p(canopy + j_date)"=psi.epfu.null,#
+                          "psi(landform 1km)gam(.)eps(.)p(canopy + j_date)"=psi.epfu.landform1k,#
+                          "psi(Urban 1km mean)gam(.)eps(.)p(canopy + j_date)"=psi.epfu.urban1km_mean,#
+                          "psi(Urban 1km median)gam(.)eps(.)p(canopy + j_date)"=psi.epfu.urban1km_median,#
+                          "psi(Canopy 1km mean)gam(.)eps(.)p(canopy + j_date)"=psi.epfu.canopy1km_mean,#
+                          "psi(Canopy 1km median)gam(.)eps(.)p(canopy + j_date)"=psi.epfu.canopy1km_median
+)
+
+#nothing better than the null 
+aictab(cand.set=psi.epfu.1km.models,second.ord = FALSE, c.hat=2.61)
+
+
+
+#2.5km scale 
+
+psi.epfu.landform2.5k<-
+  colext(
+    psiformula = ~ sc.landform_2500m,
+    gammaformula = ~ 1,
+    epsilonformula = ~ 1,
+    pformula = ~canopy + j_date,
+    data = epfu_umf
+  )
+
+psi.epfu.urban2500m_mean<-
+  colext(
+    psiformula = ~ sc.urban2500m_mean,
+    gammaformula = ~ 1,
+    epsilonformula = ~ 1,
+    pformula = ~canopy + j_date,
+    data = epfu_umf
+  )
+
+psi.epfu.urban2500m_median<-
+  colext(
+    psiformula = ~ sc.urban2500m_median,
+    gammaformula = ~ 1,
+    epsilonformula = ~ 1,
+    pformula = ~canopy + j_date,
+    data = epfu_umf
+  )
+
+psi.epfu.canopy2500m_mean<-
+  colext(
+    psiformula = ~ sc.canopy2500m_mean,
+    gammaformula = ~ 1,
+    epsilonformula = ~ 1,
+    pformula = ~canopy + j_date,
+    data = epfu_umf
+  )
+
+psi.epfu.canopy2500m_median<-
+  colext(
+    psiformula = ~ sc.canopy2500m_median,
+    gammaformula = ~ 1,
+    epsilonformula = ~ 1,
+    pformula = ~canopy + j_date,
+    data = epfu_umf
+  )
+
+#2500m level model selection 
+psi.epfu.2500m.models<-list("psi(.)gam(.)eps(.)p(canopy + j_date)"=psi.epfu.null,#
+                            "psi(landform 2500m)gam(.)eps(.)p(canopy + j_date)"=psi.epfu.landform2.5k,#
+                            "psi(Urban 2500m mean)gam(.)eps(.)p(canopy + j_date)"=psi.epfu.urban2500m_mean,#
+                            "psi(Urban 2500m median)gam(.)eps(.)p(canopy + j_date)"=psi.epfu.urban2500m_median,#
+                            "psi(Canopy 2500m mean)gam(.)eps(.)p(canopy + j_date)"=psi.epfu.canopy2500m_mean,#
+                            "psi(Canopy 2500m median)gam(.)eps(.)p(canopy + j_date)"=psi.epfu.canopy2500m_median
+)
+
+#nothing better than the null 
+aictab(cand.set=psi.epfu.2500m.models,second.ord = FALSE, c.hat=2.61)
+
+
+#test without outlier site (change umf dataframe to epfu_umf_out)
+
+# epfu_umf_out<-epfu_umf[which(siteCovs(epfu_umf)$sc.site_code!="C66-S1"),]
+# summary(epfu_umf)
+
+
+sc%>%
+  filter(is.na(urban5km_mean))
+
+
+
+summary(epfu_umf@siteCovs)
+
+#5km scale 
+
+psi.epfu.landform5k<-
+  colext(
+    psiformula = ~ sc.landform_5km,
+    gammaformula = ~ 1,
+    epsilonformula = ~ 1,
+    pformula = ~canopy + j_date,
+    data = epfu_umf
+  )
+
+
+psi.epfu.urban5km_mean<-
+  colext(
+    psiformula = ~ sc.urban5km_mean,
+    gammaformula = ~ 1,
+    epsilonformula = ~ 1,
+    pformula = ~canopy + j_date,
+    data = epfu_umf
+  )
+
+psi.epfu.urban5km_median<-
+  colext(
+    psiformula = ~ sc.urban5km_median,
+    gammaformula = ~ 1,
+    epsilonformula = ~ 1,
+    pformula = ~canopy + j_date,
+    data = epfu_umf
+  )
+
+psi.epfu.canopy5km_mean<-
+  colext(
+    psiformula = ~ sc.canopy5km_mean,
+    gammaformula = ~ 1,
+    epsilonformula = ~ 1,
+    pformula = ~canopy + j_date,
+    data = epfu_umf
+  )
+
+psi.epfu.canopy5km_mean_lf<-
+  colext(
+    psiformula = ~ sc.canopy5km_mean+sc.landform_5km,
+    gammaformula = ~ 1,
+    epsilonformula = ~ 1,
+    pformula = ~canopy + j_date,
+    data = epfu_umf
+  )
+
+psi.epfu.canopy5km_mean2<-
+  colext(
+    psiformula = ~ sc.canopy5km_mean+I(sc.canopy5km_mean^2),
+    gammaformula = ~ 1,
+    epsilonformula = ~ 1,
+    pformula = ~canopy + j_date,
+    data = epfu_umf
+  )
+
+
+
+psi.epfu.canopy5km_median<-
+  colext(
+    psiformula = ~ sc.canopy5km_median,
+    gammaformula = ~ 1,
+    epsilonformula = ~ 1,
+    pformula = ~canopy + j_date,
+    data = epfu_umf
+  )
+
+psi.epfu.urban5km_mean2<-
+  colext(
+    psiformula = ~ sc.urban5km_mean + I(sc.urban5km_mean^2),
+    gammaformula = ~ 1,
+    epsilonformula = ~ 1,
+    pformula = ~canopy + j_date,
+    data = epfu_umf
+  )
+
+
+#5km level model selection 
+psi.epfu.5km.models<-list("psi(.)gam(.)eps(.)p(canopy + j_date)"=psi.epfu.null,#
+                          "psi(landform 5km)gam(.)eps(.)p(canopy + j_date)"=psi.epfu.landform5k,#
+                          "psi(Urban 5km mean)gam(.)eps(.)p(canopy + j_date)"=psi.epfu.urban5km_mean,#
+                          "psi(Urban 5km mean2)gam(.)eps(.)p(canopy + j_date)"=psi.epfu.urban5km_mean2,#
+                          "psi(Urban 5km median)gam(.)eps(.)p(canopy + j_date)"=psi.epfu.urban5km_median,#
+                          "psi(Canopy 5km mean)gam(.)eps(.)p(canopy + j_date)"=psi.epfu.canopy5km_mean,#
+                          "psi(Canopy 5km mean + landform 5km)gam(.)eps(.)p(canopy + j_date)"=psi.epfu.canopy5km_mean_lf,#
+                          "psi(Canopy 5km mean2)gam(.)eps(.)p(canopy + j_date)"=psi.epfu.canopy5km_mean2,#
+                          "psi(Canopy 5km median)gam(.)eps(.)p(canopy + j_date)"=psi.epfu.canopy5km_median
+)
+
+#Nothing better than null
+aictab(cand.set=psi.epfu.5km.models,second.ord = FALSE, c.hat=2.61)
+
+
+summary(psi.epfu.urban5km_mean)#SE 3 times estimate
+summary(psi.epfu.urban5km_median)#huge SE, 25 times estimate, mean looks better
+summary(psi.epfu.urban5km_mean2)#SE 3 times estimate
+
+
+
+#look at plot of 5k 
+library(GGally)
+library(stringr)
+p5k<-
+  sc3%>%
+  select_if(stringr::str_detect(names(.),"5km"))
+
+
+ggpairs(p5k)#quick scatter plot
+
+
+
+
+
+
+
+# MYSE PSI models ---------------------------------------------------------
+
+
+
+
+#site scale 
+
+names(myse_umf@siteCovs)
+
+psi.myse.null<-
+  colext(
+    psiformula = ~1,
+    gammaformula = ~ 1,
+    epsilonformula = ~ 1,
+    pformula = ~canopy,
+    data = myse_umf
+  )
+
+psi.myse.wns<-
+  colext(
+    psiformula = ~sc.WNS_2,
+    gammaformula = ~ 1,
+    epsilonformula = ~ 1,
+    pformula = ~canopy,
+    data = myse_umf
+  )
+
+psi.myse.structure<-
+  colext(
+    psiformula = ~sc.structure,
+    gammaformula = ~ 1,
+    epsilonformula = ~ 1,
+    pformula = ~  canopy,
+    data = myse_umf
+  )
+
+psi.myse.canopy<-
+  colext(
+    psiformula = ~sc.canopy,
+    gammaformula = ~ 1,
+    epsilonformula = ~ 1,
+    pformula = ~  canopy,
+    data = myse_umf
+  )
+
+psi.myse.water<-
+  colext(
+    psiformula = ~ sc.water,
+    gammaformula = ~ 1,
+    epsilonformula = ~ 1,
+    pformula = ~  canopy,
+    data = myse_umf
+  )
+
+psi.myse.elev<-
+  colext(
+    psiformula = ~sc.elev,
+    gammaformula = ~ 1,
+    epsilonformula = ~ 1,
+    pformula = ~  canopy,
+    data = myse_umf
+  )
+
+psi.myse.impervious<-
+  colext(
+    psiformula = ~sc.impervious,
+    gammaformula = ~ 1,
+    epsilonformula = ~ 1,
+    pformula = ~ canopy,
+    data = myse_umf
+  )
+
+#WNS
+
+psi.myse.structure_WNS<-
+  colext(
+    psiformula = ~sc.structure + sc.WNS_2,
+    gammaformula = ~ 1,
+    epsilonformula = ~ 1,
+    pformula = ~  canopy,
+    data = myse_umf
+  )
+
+psi.myse.canopy_WNS<-
+  colext(
+    psiformula = ~sc.canopy+ sc.WNS_2,
+    gammaformula = ~ 1,
+    epsilonformula = ~ 1,
+    pformula = ~  canopy,
+    data = myse_umf
+  )
+
+psi.myse.water_WNS<-
+  colext(
+    psiformula = ~ sc.water+ sc.WNS_2,
+    gammaformula = ~ 1,
+    epsilonformula = ~ 1,
+    pformula = ~  canopy,
+    data = myse_umf
+  )
+
+psi.myse.elev_WNS<-
+  colext(
+    psiformula = ~sc.elev+ sc.WNS_2,
+    gammaformula = ~ 1,
+    epsilonformula = ~ 1,
+    pformula = ~  canopy,
+    data = myse_umf
+  )
+
+psi.myse.impervious_WNS<-
+  colext(
+    psiformula = ~sc.impervious+ sc.WNS_2,
+    gammaformula = ~ 1,
+    epsilonformula = ~ 1,
+    pformula = ~ canopy,
+    data = myse_umf
+  )
+
+psi.myse.tree_canopy_WNS<-
+  colext(
+    psiformula = ~sc.tree_canopy+ sc.WNS_2,
+    gammaformula = ~ 1,
+    epsilonformula = ~ 1,
+    pformula = ~  canopy,
+    data = myse_umf
+  )
+
+psi.myse.tree_canopy<-
+  colext(
+    psiformula = ~sc.tree_canopy,
+    gammaformula = ~ 1,
+    epsilonformula = ~ 1,
+    pformula = ~  canopy,
+    data = myse_umf
+  )
+
+psi.myse.tree_canopy2<-
+  colext(
+    psiformula = ~sc.tree_canopy+I(sc.tree_canopy^2),
+    gammaformula = ~ 1,
+    epsilonformula = ~ 1,
+    pformula = ~  canopy,
+    data = myse_umf
+  )
+
+
+psi.myse.tree_canopy3<-
+  colext(
+    psiformula = ~sc.tree_canopy+I(sc.tree_canopy^2)+I(sc.tree_canopy^3),
+    gammaformula = ~ 1,
+    epsilonformula = ~ 1,
+    pformula = ~  canopy,
+    data = myse_umf
+  )
+
+psi.myse.dis_2_clutter<-
+  colext(
+    psiformula = ~ sc.dis_2_clutter,
+    gammaformula = ~ 1,
+    epsilonformula = ~ 1,
+    pformula = ~  canopy,
+    data = myse_umf
+  )
+
+psi.myse.dis_2_clutter2<-
+  colext(
+    psiformula = ~ sc.dis_2_clutter+I(sc.dis_2_clutter^2),
+    gammaformula = ~ 1,
+    epsilonformula = ~ 1,
+    pformula = ~  canopy,
+    data = myse_umf
+  )
+
+psi.myse.dis_2_clutter3<-
+  colext(
+    psiformula = ~ sc.dis_2_clutter+I(sc.dis_2_clutter^2)+I(sc.dis_2_clutter^3),
+    gammaformula = ~ 1,
+    epsilonformula = ~ 1,
+    pformula = ~  canopy,
+    data = myse_umf
+  )
+
+psi.myse.elev2<-
+  colext(
+    psiformula = ~sc.elev+I(sc.elev^2),
+    gammaformula = ~ 1,
+    epsilonformula = ~ 1,
+    pformula = ~  canopy,
+    data = myse_umf
+  )
+
+psi.myse.elev_canopy<-
+  colext(
+    psiformula = ~sc.elev+sc.canopy,
+    gammaformula = ~ 1,
+    epsilonformula = ~ 1,
+    pformula = ~  canopy,
+    data = myse_umf
+  )
+
+
+psi.myse.elev.canopy<-
+  colext(
+    psiformula = ~sc.elev*sc.canopy,
+    gammaformula = ~ 1,
+    epsilonformula = ~ 1,
+    pformula = ~  canopy,
+    data = myse_umf
+  )
+
+psi.myse.elev_tree_canopy<-
+  colext(
+    psiformula = ~sc.elev+sc.tree_canopy,
+    gammaformula = ~ 1,
+    epsilonformula = ~ 1,
+    pformula = ~  canopy,
+    data = myse_umf
+  )
+
+
+psi.myse.elev.tree_canopy<-
+  colext(
+    psiformula = ~sc.elev*sc.tree_canopy,
+    gammaformula = ~ 1,
+    epsilonformula = ~ 1,
+    pformula = ~  canopy,
+    data = myse_umf
+  )
+
+
+psi.myse.elev_impervious<-
+  colext(
+    psiformula = ~sc.elev+sc.impervious,
+    gammaformula = ~ 1,
+    epsilonformula = ~ 1,
+    pformula = ~  canopy,
+    data = myse_umf
+  )
+
+psi.myse.elev_water<-
+  colext(
+    psiformula = ~sc.elev+sc.water,
+    gammaformula = ~ 1,
+    epsilonformula = ~ 1,
+    pformula = ~  canopy,
+    data = myse_umf
+  )
+
+
+psi.myse.water_tree_canopy<-
+  colext(
+    psiformula = ~sc.water+sc.tree_canopy,
+    gammaformula = ~ 1,
+    epsilonformula = ~ 1,
+    pformula = ~  canopy,
+    data = myse_umf
+  )
+
+
+#site level model selection 
+psi.myse.models<-list("psi(.)gam(.)eps(.)p(canopy)"=psi.myse.null,#
+                      "psi(WNS)gam(.)eps(.)p(canopy)"=psi.myse.wns,#
+                      "psi(tree_canopy)gam(.)eps(.)p(canopy)"=psi.myse.tree_canopy,#
+                      "psi(tree_canopy2)gam(.)eps(.)p(canopy)"=psi.myse.tree_canopy2,#
+                      "psi(tree_canopy3)gam(.)eps(.)p(canopy)"=psi.myse.tree_canopy3,#
+                      "psi(elev)gam(.)eps(.)p(canopy)"=psi.myse.elev,#
+                      "psi(elev2)gam(.)eps(.)p(canopy)"=psi.myse.elev2,#
+                      "psi(water)gam(.)eps(.)p(canopy)"=psi.myse.water,#
+                      "psi(canopy)gam(.)eps(.)p(canopy)"=psi.myse.canopy,#
+                      "psi(structure)gam(.)eps(.)p(canopy)"=psi.myse.structure,#
+                      "psi(dist to clutter)gam(.)eps(.)p(canopy)"=psi.myse.dis_2_clutter,#
+                      "psi(dist to clutter2)gam(.)eps(.)p(canopy)"=psi.myse.dis_2_clutter2,#
+                      "psi(dist to clutter3)gam(.)eps(.)p(canopy)"=psi.myse.dis_2_clutter3,#
+                      "psi(elev + WNS)gam(.)eps(.)p(canopy)"=psi.myse.elev_WNS,
+                      "psi(canopy + WNS)gam(.)eps(.)p(canopy)"=psi.myse.canopy_WNS,
+                      "psi(tree_canopy + WNS)gam(.)eps(.)p(canopy)"=psi.myse.tree_canopy_WNS,
+                      "psi(structure + WNS)gam(.)eps(.)p(canopy)"=psi.myse.structure_WNS,
+                      "psi(impervious + WNS)gam(.)eps(.)p(canopy)"=psi.myse.impervious_WNS,
+                      "psi(Water + WNS)gam(.)eps(.)p(canopy)"=psi.myse.water_WNS,#
+                      "psi(elev + canopy)gam(.)eps(.)p(canopy)"=psi.myse.elev_canopy,#
+                      "psi(elev * canopy)gam(.)eps(.)p(canopy)"=psi.myse.elev.canopy,#
+                      "psi(elev + tree_canopy)gam(.)eps(.)p(canopy)"=psi.myse.elev.tree_canopy,
+                      "psi(elev + impervious)gam(.)eps(.)p(canopy)"=psi.myse.elev_impervious,#
+                      "psi(elev + water)gam(.)eps(.)p(canopy)"=psi.myse.elev_water,#
+                      "psi(elev + tree_canopy)gam(.)eps(.)p(canopy)"=psi.myse.elev_tree_canopy,#
+                      "psi(water + tree canopy)gam(.)eps(.)p(canopy)"=psi.myse.water_tree_canopy#
+)
+
+#nothing better than the null 
+aictab(cand.set=psi.myse.models,second.ord = FALSE, c.hat=1.51)
+
+
+
+#500m scale 
+
+
+psi.myse.landform500m<-
+  colext(
+    psiformula = ~ sc.landform_500m,
+    gammaformula = ~ 1,
+    epsilonformula = ~ 1,
+    pformula = ~canopy,
+    data = myse_umf
+  )
+
+
+psi.myse.urban500m_mean<-
+  colext(
+    psiformula = ~ sc.urban500m_mean,
+    gammaformula = ~ 1,
+    epsilonformula = ~ 1,
+    pformula = ~canopy,
+    data = myse_umf
+  )
+
+psi.myse.urban500m_median<-
+  colext(
+    psiformula = ~ sc.urban500m_median,
+    gammaformula = ~ 1,
+    epsilonformula = ~ 1,
+    pformula = ~canopy,
+    data = myse_umf
+  )
+
+psi.myse.canopy500m_mean<-
+  colext(
+    psiformula = ~ sc.canopy500m_mean,
+    gammaformula = ~ 1,
+    epsilonformula = ~ 1,
+    pformula = ~canopy,
+    data = myse_umf
+  )
+
+psi.myse.canopy500m_median<-
+  colext(
+    psiformula = ~ sc.canopy500m_median,
+    gammaformula = ~ 1,
+    epsilonformula = ~ 1,
+    pformula = ~canopy,
+    data = myse_umf
+  )
+
+
+#500m level model selection 
+psi.myse.500m.models<-list("psi(.)gam(.)eps(.)p(canopy)"=psi.myse.null,#
+                           "psi(landform 0.5k)gam(.)eps(.)p(canopy)"=psi.myse.landform500m,#
+                           "psi(Urban 0.5k mean)gam(.)eps(.)p(canopy)"=psi.myse.urban500m_mean,#
+                           "psi(Urban 0.5k median)gam(.)eps(.)p(canopy)"=psi.myse.urban500m_median,#
+                           "psi(Canopy 0.5k mean)gam(.)eps(.)p(canopy)"=psi.myse.canopy500m_mean,#
+                           "psi(Canopy 0.5k median)gam(.)eps(.)p(canopy)"=psi.myse.canopy500m_median
+)
+
+#nothing better than the null 
+aictab(cand.set=psi.myse.500m.models,second.ord = FALSE, c.hat=1.51)
+
+
+
+#1km scale
+
+psi.myse.landform1k<-
+  colext(
+    psiformula = ~ sc.landform_1km,
+    gammaformula = ~ 1,
+    epsilonformula = ~ 1,
+    pformula = ~canopy,
+    data = myse_umf
+  )
+
+
+
+psi.myse.urban1km_mean<-
+  colext(
+    psiformula = ~ sc.urban1km_mean,
+    gammaformula = ~ 1,
+    epsilonformula = ~ 1,
+    pformula = ~canopy,
+    data = myse_umf
+  )
+
+psi.myse.urban1km_median<-
+  colext(
+    psiformula = ~ sc.urban1km_median,
+    gammaformula = ~ 1,
+    epsilonformula = ~ 1,
+    pformula = ~canopy,
+    data = myse_umf
+  )
+
+psi.myse.canopy1km_mean<-
+  colext(
+    psiformula = ~ sc.canopy1km_mean,
+    gammaformula = ~ 1,
+    epsilonformula = ~ 1,
+    pformula = ~canopy,
+    data = myse_umf
+  )
+
+psi.myse.canopy1km_median<-
+  colext(
+    psiformula = ~ sc.canopy1km_median,
+    gammaformula = ~ 1,
+    epsilonformula = ~ 1,
+    pformula = ~canopy,
+    data = myse_umf
+  )
+
+#1km level model selection 
+psi.myse.1km.models<-list("psi(.)gam(.)eps(.)p(canopy)"=psi.myse.null,#
+                          "psi(landform 1km)gam(.)eps(.)p(canopy)"=psi.myse.landform1k,#
+                          "psi(Urban 1km mean)gam(.)eps(.)p(canopy)"=psi.myse.urban1km_mean,#
+                          "psi(Urban 1km median)gam(.)eps(.)p(canopy)"=psi.myse.urban1km_median,#
+                          "psi(Canopy 1km mean)gam(.)eps(.)p(canopy)"=psi.myse.canopy1km_mean,#
+                          "psi(Canopy 1km median)gam(.)eps(.)p(canopy)"=psi.myse.canopy1km_median
+)
+
+#nothing better than the null 
+aictab(cand.set=psi.myse.1km.models,second.ord = FALSE, c.hat=1.51)
+
+
+
+#2.5km scale 
+
+psi.myse.landform2.5k<-
+  colext(
+    psiformula = ~ sc.landform_2500m,
+    gammaformula = ~ 1,
+    epsilonformula = ~ 1,
+    pformula = ~canopy,
+    data = myse_umf
+  )
+
+psi.myse.urban2500m_mean<-
+  colext(
+    psiformula = ~ sc.urban2500m_mean,
+    gammaformula = ~ 1,
+    epsilonformula = ~ 1,
+    pformula = ~canopy,
+    data = myse_umf
+  )
+
+psi.myse.urban2500m_median<-
+  colext(
+    psiformula = ~ sc.urban2500m_median,
+    gammaformula = ~ 1,
+    epsilonformula = ~ 1,
+    pformula = ~canopy,
+    data = myse_umf
+  )
+
+psi.myse.canopy2500m_mean<-
+  colext(
+    psiformula = ~ sc.canopy2500m_mean,
+    gammaformula = ~ 1,
+    epsilonformula = ~ 1,
+    pformula = ~canopy,
+    data = myse_umf
+  )
+
+psi.myse.canopy2500m_median<-
+  colext(
+    psiformula = ~ sc.canopy2500m_median,
+    gammaformula = ~ 1,
+    epsilonformula = ~ 1,
+    pformula = ~canopy,
+    data = myse_umf
+  )
+
+#2500m level model selection 
+psi.myse.2500m.models<-list("psi(.)gam(.)eps(.)p(canopy)"=psi.myse.null,#
+                            "psi(landform 2500m)gam(.)eps(.)p(canopy)"=psi.myse.landform2.5k,#
+                            "psi(Urban 2500m mean)gam(.)eps(.)p(canopy)"=psi.myse.urban2500m_mean,#
+                            "psi(Urban 2500m median)gam(.)eps(.)p(canopy)"=psi.myse.urban2500m_median,#
+                            "psi(Canopy 2500m mean)gam(.)eps(.)p(canopy)"=psi.myse.canopy2500m_mean,#
+                            "psi(Canopy 2500m median)gam(.)eps(.)p(canopy)"=psi.myse.canopy2500m_median
+)
+
+#nothing better than the null 
+aictab(cand.set=psi.myse.2500m.models,second.ord = FALSE, c.hat=1.51)
+
+
+#test without outlier site (change umf dataframe to myse_umf_out)
+
+# myse_umf_out<-myse_umf[which(siteCovs(myse_umf)$sc.site_code!="C66-S1"),]
+# summary(myse_umf)
+
+
+sc%>%
+  filter(is.na(urban5km_mean))
+
+
+
+summary(myse_umf@siteCovs)
+
+#5km scale 
+
+psi.myse.landform5k<-
+  colext(
+    psiformula = ~ sc.landform_5km,
+    gammaformula = ~ 1,
+    epsilonformula = ~ 1,
+    pformula = ~canopy,
+    data = myse_umf
+  )
+
+
+psi.myse.urban5km_mean<-
+  colext(
+    psiformula = ~ sc.urban5km_mean,
+    gammaformula = ~ 1,
+    epsilonformula = ~ 1,
+    pformula = ~canopy,
+    data = myse_umf
+  )
+
+psi.myse.urban5km_median<-
+  colext(
+    psiformula = ~ sc.urban5km_median,
+    gammaformula = ~ 1,
+    epsilonformula = ~ 1,
+    pformula = ~canopy,
+    data = myse_umf
+  )
+
+psi.myse.canopy5km_mean<-
+  colext(
+    psiformula = ~ sc.canopy5km_mean,
+    gammaformula = ~ 1,
+    epsilonformula = ~ 1,
+    pformula = ~canopy,
+    data = myse_umf
+  )
+
+psi.myse.canopy5km_mean_lf<-
+  colext(
+    psiformula = ~ sc.canopy5km_mean+sc.landform_5km,
+    gammaformula = ~ 1,
+    epsilonformula = ~ 1,
+    pformula = ~canopy,
+    data = myse_umf
+  )
+
+psi.myse.canopy5km_mean2<-
+  colext(
+    psiformula = ~ sc.canopy5km_mean+I(sc.canopy5km_mean^2),
+    gammaformula = ~ 1,
+    epsilonformula = ~ 1,
+    pformula = ~canopy,
+    data = myse_umf
+  )
+
+
+
+psi.myse.canopy5km_median<-
+  colext(
+    psiformula = ~ sc.canopy5km_median,
+    gammaformula = ~ 1,
+    epsilonformula = ~ 1,
+    pformula = ~canopy,
+    data = myse_umf
+  )
+
+psi.myse.urban5km_mean2<-
+  colext(
+    psiformula = ~ sc.urban5km_mean + I(sc.urban5km_mean^2),
+    gammaformula = ~ 1,
+    epsilonformula = ~ 1,
+    pformula = ~canopy,
+    data = myse_umf
+  )
+
+
+#5km level model selection 
+psi.myse.5km.models<-list("psi(.)gam(.)eps(.)p(canopy)"=psi.myse.null,#
+                          "psi(landform 5km)gam(.)eps(.)p(canopy)"=psi.myse.landform5k,#
+                          "psi(Urban 5km mean)gam(.)eps(.)p(canopy)"=psi.myse.urban5km_mean,#
+                          "psi(Urban 5km mean2)gam(.)eps(.)p(canopy)"=psi.myse.urban5km_mean2,#
+                          "psi(Urban 5km median)gam(.)eps(.)p(canopy)"=psi.myse.urban5km_median,#
+                          "psi(Canopy 5km mean)gam(.)eps(.)p(canopy)"=psi.myse.canopy5km_mean,#
+                          "psi(Canopy 5km mean + landform 5km)gam(.)eps(.)p(canopy)"=psi.myse.canopy5km_mean_lf,#
+                          "psi(Canopy 5km mean2)gam(.)eps(.)p(canopy)"=psi.myse.canopy5km_mean2,#
+                          "psi(Canopy 5km median)gam(.)eps(.)p(canopy)"=psi.myse.canopy5km_median
+)
+
+#Nothing better than null
+aictab(cand.set=psi.myse.5km.models,second.ord = FALSE, c.hat=1.51)
+
+
+summary(psi.myse.canopy5km_mean)#significant P vale
+summary(psi.myse.urban5km_mean)#decent se but canopy better via AIC
+summary(psi.myse.urban5km_mean2)#SE 9 times estimate
+
+
+
+#look at plot of 5k vars
+library(GGally)
+library(stringr)
+p5k<-
+  sc3%>%
+  select_if(stringr::str_detect(names(.),"5km"))
+
+
+ggpairs(p5k)#quick scatter plot
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# PESU extinction models --------------------------------------------------
+
+#scale numeric obs covs
+pesu_umf@yearlySiteCovs<-
+  pesu_umf@yearlySiteCovs%>%
+  mutate_if(is.numeric,scale)
+
+
+
+eps.pesu.null<-
+  colext(
+    psiformula = ~1,
+    gammaformula = ~ 1,
+    epsilonformula = ~ 1,
+    pformula = ~tavg + water,
+    data = pesu_umf
+  )
+
+(eps.pesu.min_jan<-
+  colext(
+    psiformula = ~1,
+    gammaformula = ~ 1,
+    epsilonformula = ~ tmin_jan,
+    pformula = ~tavg + water,
+    data = pesu_umf
+  ))
+
+(eps.pesu.min_wint<-
+  colext(
+    psiformula = ~1,
+    gammaformula = ~ 1,
+    epsilonformula = ~ tmin_wint_mean,
+    pformula = ~tavg + water,
+    data = pesu_umf
+  ))
+
+(eps.pesu.min_year<-
+  colext(
+    psiformula = ~1,
+    gammaformula = ~ 1,
+    epsilonformula = ~ tmin_year_mean,
+    pformula = ~tavg + water,
+    data = pesu_umf
+  ))
+
+(eps.pesu.max_aug<-
+    colext(
+      psiformula = ~1,
+      gammaformula = ~ 1,
+      epsilonformula = ~ tmax_08,
+      pformula = ~tavg + water,
+      data = pesu_umf
+    ))
+
+
+(eps.pesu.max_year<-
+    colext(
+      psiformula = ~1,
+      gammaformula = ~ 1,
+      epsilonformula = ~ tmax_year_mean,
+      pformula = ~tavg + water,
+      data = pesu_umf
+    ))
+
+
+(eps.pesu.max_sumr<-
+    colext(
+      psiformula = ~1,
+      gammaformula = ~ 1,
+      epsilonformula = ~ tmax_sumr_mean,
+      pformula = ~tavg + water,
+      data = pesu_umf
+    ))
+
+library(AICcmodavg)
+
+#ext model selection 
+eps.pesu.models<-list(     "psi(.)gam(.)eps(.)p(average temp + water)"=eps.pesu.null,#
+                           "psi(.)gam(.)eps(min jan)p(average temp + water)"=eps.pesu.min_jan,#
+                           "psi(.)gam(.)eps(min winter)p(average temp + water)"=eps.pesu.min_wint,#
+                           "psi(.)gam(.)eps(min year)p(average temp + water)"=eps.pesu.min_year,#
+                           "psi(.)gam(.)eps(max 08)p(average temp + water)"=eps.pesu.max_aug,#
+                           "psi(.)gam(.)eps(max summer)p(average temp + water)"=eps.pesu.max_sumr,
+                           "psi(.)gam(.)eps(max year)p(average temp + water)"=eps.pesu.max_year
+)
+
+#nothing better than the null 
+aictab(cand.set=eps.pesu.models,second.ord = FALSE, c.hat=2.23)
+
+
+summary(eps.pesu.max_aug)#good SE negative relationship 
+
+
+
+#quick look at plot of data
+nd<-data.frame(tmax_08=seq(min(na.omit(pesu_umf@yearlySiteCovs$tmax_08)),max(na.omit(pesu_umf@yearlySiteCovs$tmax_08)),length.out =50))
+
+ep<-predict(eps.pesu.max_aug, type="ext" , newdata=nd,appendData=TRUE)
+
+pd <- position_dodge(0.2) # move them .05 to the left and right
+
+#quick plot
+ggplot(ep,aes(tmax_08,Predicted))+
+  geom_line()+
+  geom_ribbon(aes(ymin=lower, ymax=upper),alpha=0.5)+
+  ylab("Ext")+
+  xlab("Max temp August scaled")+
+  ggtitle("PESU")+
+  theme_pubr()+
+  theme(axis.title.y = element_text(face = "italic"))
 
 
 

@@ -94,7 +94,6 @@ skim(dft)#take a look at the data
 
 
 #add site covarites
-
 names(s21)
 sc<-s21[,-c(1,6:7)]
 
